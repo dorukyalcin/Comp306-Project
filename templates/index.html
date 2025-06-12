@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Sarcastic Casino{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <h1 class="display-4 mb-4">Welcome to Sarcastic Casino</h1>
+        <p class="lead mb-4">Where losing is just another way of winning... sarcastically!</p>
+        
+        {% if current_user.is_authenticated %}
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Horse Racing</h5>
+                            <p class="card-text">Bet on horses that might actually run!</p>
+                            <a href="#" class="btn btn-primary">Play Now</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Blackjack</h5>
+                            <p class="card-text">Try to beat the dealer... good luck with that!</p>
+                            <a href="#" class="btn btn-primary">Play Now</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Roulette</h5>
+                            <p class="card-text">Spin the wheel of fortune... or misfortune!</p>
+                            <a href="#" class="btn btn-primary">Play Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <h5 class="card-title">Ready to lose some money?</h5>
+                            <p class="card-text">Join us for the most sarcastic gambling experience ever!</p>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('register') }}" class="btn btn-primary">Register Now</a>
+                                <a href="{{ url_for('login') }}" class="btn btn-outline-light">Login</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

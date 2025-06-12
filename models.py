@@ -1,6 +1,8 @@
-from app import db
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import JSON, NUMERIC
 from sqlalchemy import ForeignKey
+
+db = SQLAlchemy()
 
 class User(db.Model):
     __tablename__ = 'users'
