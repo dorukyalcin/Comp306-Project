@@ -7,22 +7,23 @@ db = SQLAlchemy()
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False, unique=True)
     email = db.Column(db.String, nullable=False, unique=True)
     pw_hash = db.Column(db.String(512), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    profile_picture = db.Column(db.String(255), default='default_profile.png')
     settings = db.relationship('UserSettings', back_populates='user', uselist=False)
     wallets = db.relationship('Wallet', back_populates='user')
     bets = db.relationship('Bet', back_populates='user')
 
     def get_id(self):
-        return str(self.id)
+        return str(self.user_id)
 
 class UserSettings(db.Model):
     __tablename__ = 'user_settings'
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
     sarcasm_level = db.Column(db.SmallInteger)
     theme = db.Column(db.Text)
     user = db.relationship('User', back_populates='settings')
@@ -32,7 +33,7 @@ class UserSettings(db.Model):
 class Wallet(db.Model):
     __tablename__ = 'wallets'
     wallet_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     currency = db.Column(db.String)
     balance = db.Column(NUMERIC)
     user = db.relationship('User', back_populates='wallets')
@@ -82,7 +83,7 @@ class Bet(db.Model):
     __tablename__ = 'bets'
     bet_id = db.Column(db.BigInteger, primary_key=True)
     round_id = db.Column(db.BigInteger, db.ForeignKey('rounds.round_id'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     amount = db.Column(NUMERIC)
     choice_data = db.Column(JSON)
     placed_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())

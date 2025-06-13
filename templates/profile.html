@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Sarcastic Casino{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary">
+                    <h3 class="text-center mb-0">Profile</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <img src="{{ url_for('static', filename='profile_pics/' + user.profile_picture) }}" 
+                                 alt="Profile Picture" 
+                                 class="img-fluid rounded-circle mb-3"
+                                 style="max-width: 200px; height: auto;">
+                            
+                            <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data" class="mb-3">
+                                <div class="mb-3">
+                                    <input type="file" class="form-control" name="profile_picture" accept="image/*">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Picture</button>
+                            </form>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card bg-dark border-secondary mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">User Information</h5>
+                                    <p><strong>Username:</strong> {{ user.username }}</p>
+                                    <p><strong>Email:</strong> {{ user.email }}</p>
+                                    <p><strong>Member Since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-dark border-secondary">
+                                <div class="card-body">
+                                    <h5 class="card-title">Account Statistics</h5>
+                                    <p><strong>Current Balance:</strong> {{ user.wallets[0].balance|round(2) }} {{ user.wallets[0].currency }}</p>
+                                    <p><strong>Total Bets:</strong> {{ user.bets|length }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -3,126 +3,117 @@
 {% block title %}Wallet - Sarcastic Casino{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card bg-dark border-secondary">
-            <div class="card-header border-secondary">
-                <h3 class="text-center mb-0">Wallet Management</h3>
+<div class="container">
+    <h2 class="mb-4">Wallet Management</h2>
+    
+    <!-- Wallet Balance Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Current Balance</h5>
+            <h3 class="text-primary">{{ "%.2f"|format(wallet.balance) }} {{ wallet.currency }}</h3>
+        </div>
+    </div>
+
+    <!-- Transaction Forms -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Deposit</h5>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                        </div>
+                        <input type="hidden" name="action" value="deposit">
+                        <button type="submit" class="btn btn-success">Deposit</button>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-12 text-center">
-                        <h4>Current Balance</h4>
-                        <h2 class="text-warning">
-                            <i class="fas fa-coins"></i>
-                            {{ current_user.wallets[0].balance|round(2) }} {{ current_user.wallets[0].currency }}
-                        </h2>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Withdraw</h5>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                        </div>
+                        <input type="hidden" name="action" value="withdraw">
+                        <button type="submit" class="btn btn-danger">Withdraw</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Transaction History</h5>
+            
+            <!-- Filters -->
+            <form method="GET" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <select name="type" class="form-select">
+                            <option value="all" {% if current_type == 'all' %}selected{% endif %}>All Transactions</option>
+                            <option value="deposit" {% if current_type == 'deposit' %}selected{% endif %}>Deposits</option>
+                            <option value="withdraw" {% if current_type == 'withdraw' %}selected{% endif %}>Withdrawals</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="start_date" class="form-control" value="{{ start_date }}" placeholder="Start Date">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="end_date" class="form-control" value="{{ end_date }}" placeholder="End Date">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        <a href="{{ url_for('wallet') }}" class="btn btn-secondary">Clear</a>
                     </div>
                 </div>
+            </form>
 
-                <div class="row">
-                    <!-- Deposit Form -->
-                    <div class="col-md-6">
-                        <div class="card bg-dark border-success">
-                            <div class="card-header border-success">
-                                <h4 class="mb-0 text-success">Deposit</h4>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" action="{{ url_for('wallet') }}">
-                                    <input type="hidden" name="action" value="deposit">
-                                    <div class="mb-3">
-                                        <label for="deposit_amount" class="form-label">Amount</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-dark text-light border-secondary">{{ current_user.wallets[0].currency }}</span>
-                                            <input type="number" class="form-control bg-dark text-light border-secondary" 
-                                                   id="deposit_amount" name="amount" min="1" step="0.01" required>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="fas fa-plus-circle"></i> Deposit
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Withdraw Form -->
-                    <div class="col-md-6">
-                        <div class="card bg-dark border-danger">
-                            <div class="card-header border-danger">
-                                <h4 class="mb-0 text-danger">Withdraw</h4>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" action="{{ url_for('wallet') }}">
-                                    <input type="hidden" name="action" value="withdraw">
-                                    <div class="mb-3">
-                                        <label for="withdraw_amount" class="form-label">Amount</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-dark text-light border-secondary">{{ current_user.wallets[0].currency }}</span>
-                                            <input type="number" class="form-control bg-dark text-light border-secondary" 
-                                                   id="withdraw_amount" name="amount" min="1" step="0.01" required>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn btn-danger w-100">
-                                        <i class="fas fa-minus-circle"></i> Withdraw
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Transaction History -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card bg-dark border-secondary">
-                            <div class="card-header border-secondary">
-                                <h4 class="mb-0">Recent Transactions</h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-dark table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% set transactions = current_user.wallets[0].transactions|sort(attribute='created_at', reverse=true) %}
-                                            {% if transactions %}
-                                                {% for transaction in transactions[:5] %}
-                                                <tr>
-                                                    <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                                    <td>
-                                                        {% if transaction.txn_type == 'deposit' %}
-                                                            <span class="text-success">Deposit</span>
-                                                        {% else %}
-                                                            <span class="text-danger">Withdraw</span>
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>
-                                                        {% if transaction.txn_type == 'deposit' %}
-                                                            <span class="text-success">+{{ transaction.amount|round(2) }}</span>
-                                                        {% else %}
-                                                            <span class="text-danger">-{{ transaction.amount|round(2) }}</span>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            {% else %}
-                                                <tr>
-                                                    <td colspan="3" class="text-center">No transactions yet</td>
-                                                </tr>
-                                            {% endif %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Transaction Table -->
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>
+                                Date
+                                <a href="{{ url_for('wallet', type=current_type, sort='date', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
+                                    {% if current_sort == 'date' and current_order == 'asc' %}↑{% else %}↓{% endif %}
+                                </a>
+                            </th>
+                            <th>Type</th>
+                            <th>
+                                Amount
+                                <a href="{{ url_for('wallet', type=current_type, sort='amount', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
+                                    {% if current_sort == 'amount' and current_order == 'asc' %}↑{% else %}↓{% endif %}
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if transactions %}
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    <span class="badge {% if transaction.txn_type == 'deposit' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ transaction.txn_type|title }}
+                                    </span>
+                                </td>
+                                <td>{{ "%.2f"|format(transaction.amount) }} {{ wallet.currency }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center">No transactions found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

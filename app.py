@@ -6,11 +6,22 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from models import db, User, Wallet, Transaction
 from decimal import Decimal
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/casino_db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Change this in production!
+app.config['UPLOAD_FOLDER'] = os.path.join('static', 'profile_pics')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Ensure the upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 db.init_app(app)
 login_manager = LoginManager()
@@ -48,7 +59,7 @@ def register():
         db.session.commit()
         
         # Create wallet
-        wallet = Wallet(user_id=user.id, currency=currency, balance=0)
+        wallet = Wallet(user_id=user.user_id, currency=currency, balance=0)
         db.session.add(wallet)
         db.session.commit()
         
@@ -86,9 +97,36 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-@app.route('/profile')
+@app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    if request.method == 'POST':
+        if 'profile_picture' not in request.files:
+            flash('No file selected', 'danger')
+            return redirect(url_for('profile'))
+            
+        file = request.files['profile_picture']
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(url_for('profile'))
+            
+        if file and allowed_file(file.filename):
+            filename = secure_filename(f"{current_user.id}_{file.filename}")
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            # Delete old profile picture if it exists and is not the default
+            if current_user.profile_picture != 'default_profile.png':
+                old_filepath = os.path.join(app.config['UPLOAD_FOLDER'], current_user.profile_picture)
+                if os.path.exists(old_filepath):
+                    os.remove(old_filepath)
+            
+            file.save(filepath)
+            current_user.profile_picture = filename
+            db.session.commit()
+            flash('Profile picture updated successfully!', 'success')
+        else:
+            flash('Invalid file type. Allowed types: png, jpg, jpeg, gif', 'danger')
+            
     return render_template('profile.html', user=current_user)
 
 @app.route('/wallet', methods=['GET', 'POST'])
@@ -130,8 +168,48 @@ def wallet():
             
         db.session.commit()
         return redirect(url_for('wallet'))
+    
+    # Get filter parameters
+    txn_type = request.args.get('type', 'all')
+    sort_by = request.args.get('sort', 'date')
+    sort_order = request.args.get('order', 'desc')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Get wallet and transactions
+    wallet = current_user.wallets[0]
+    query = Transaction.query.filter_by(wallet_id=wallet.wallet_id)
+    
+    # Apply filters
+    if txn_type != 'all':
+        query = query.filter_by(txn_type=txn_type)
+    if start_date:
+        query = query.filter(Transaction.created_at >= start_date)
+    if end_date:
+        query = query.filter(Transaction.created_at <= end_date)
+    
+    # Apply sorting
+    if sort_by == 'amount':
+        if sort_order == 'asc':
+            query = query.order_by(Transaction.amount.asc())
+        else:
+            query = query.order_by(Transaction.amount.desc())
+    else:  # sort by date
+        if sort_order == 'asc':
+            query = query.order_by(Transaction.created_at.asc())
+        else:
+            query = query.order_by(Transaction.created_at.desc())
+    
+    transactions = query.all()
         
-    return render_template('wallet.html')
+    return render_template('wallet.html', 
+                         wallet=wallet,
+                         transactions=transactions,
+                         current_type=txn_type,
+                         current_sort=sort_by,
+                         current_order=sort_order,
+                         start_date=start_date,
+                         end_date=end_date)
 
 if __name__ == '__main__':
     with app.app_context():
