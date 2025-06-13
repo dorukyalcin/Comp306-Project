@@ -12,19 +12,19 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('register') }}">
                     <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control bg-dark text-light border-secondary" id="username" name="username" required>
+                        <label for="username" class="form-label fw-bold">Username</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" id="username" name="username" required placeholder="Choose a username">
                     </div>
                     <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control bg-dark text-light border-secondary" id="email" name="email" required>
+                        <label for="email" class="form-label fw-bold">Email</label>
+                        <input type="email" class="form-control bg-dark text-light border-secondary" id="email" name="email" required placeholder="Enter your email address">
                     </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control bg-dark text-light border-secondary" id="password" name="password" required>
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-bold">Password</label>
+                        <input type="password" class="form-control bg-dark text-light border-secondary" id="password" name="password" required placeholder="Create a password">
                     </div>
-                    <div class="mb-3">
-                        <label for="currency" class="form-label">Preferred Currency</label>
+                    <div class="mb-4">
+                        <label for="currency" class="form-label fw-bold">Preferred Currency</label>
                         <select class="form-select bg-dark text-light border-secondary" id="currency" name="currency">
                             <option value="USD">USD</option>
                             <option value="EUR">EUR</option>

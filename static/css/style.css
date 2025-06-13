@@ -32,4 +32,10 @@ body {
 .alert {
     border: none;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Light grey placeholder text for all input and select fields */
+.form-control::placeholder, .form-select::placeholder {
+    color: #b0b0b0 !important;
+    opacity: 1;
 } 

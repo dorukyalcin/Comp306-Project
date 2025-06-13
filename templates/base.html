@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Sarcastic Casino{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="bg-dark text-light">
@@ -17,6 +18,12 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('wallet') }}">
+                                <i class="fas fa-coins text-warning"></i>
+                                <span class="text-light">{{ current_user.wallets[0].balance|round(2) }} {{ current_user.wallets[0].currency }}</span>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/profile">Profile</a>
                         </li>
@@ -37,6 +44,9 @@
     </nav>
 
     <div class="container mt-4">
+        <div class="text-center mb-4">
+            <img src="{{ url_for('static', filename='res/dunce.png') }}" alt="Logo" style="max-width: 100px; height: auto;">
+        </div>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
