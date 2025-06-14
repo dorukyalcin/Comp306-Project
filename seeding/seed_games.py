@@ -1,4 +1,9 @@
-from app import db
+import sys
+import os
+sys.path.insert(0, '/app')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import app, db
 from models import Game
 
 def seed_games():
@@ -14,6 +19,7 @@ def seed_games():
     db.session.commit()
 
 if __name__ == '__main__':
-    with db.session.begin():
-        seed_games()
-    print('Seeded games table.') 
+    with app.app_context():
+        with db.session.begin():
+            seed_games()
+        print('Seeded games table.') 

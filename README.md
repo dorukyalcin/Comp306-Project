@@ -1,27 +1,41 @@
 # Sarcastic Gambling Site
 
-## Setup (Docker)
+## Quick Start (Docker - Automated Setup)
 
-1. Copy `.env.example` to `.env` and adjust if needed.
-2. Build and run:
+1. Setup scripts (after cloning):
+
+```sh
+# Option A: Run setup script
+bash setup.sh
+
+# Option B: Manual chmod
+chmod +x scripts/*.sh
+```
+
+2. Build and run with full database seeding:
 
 ```sh
 docker-compose up --build
 ```
 
-3. Initialize the database (in another terminal):
+3. Run the comprehensive setup script:
 
 ```sh
-docker-compose run web python init_db.py
+./scripts/fresh_start.sh
 ```
 
-4. Seed the games table:
-
+**Alternative:** Use interactive menu:
 ```sh
-docker-compose run web python seed_games.py
+./scripts/dev_menu.sh
 ```
 
-5. Visit [http://localhost:8000/health](http://localhost:8000/health) to check the app is running.
+3. Visit [http://localhost:8000](http://localhost:8000) - Site is ready with test data!
+
+**Login Credentials:**
+- Any username with password: `password123`
+- Admin users: `admin_casino` or `admin_sarah`
+
+## Manual Setup (Docker)
 
 ## Manual Setup (Local Python)
 
