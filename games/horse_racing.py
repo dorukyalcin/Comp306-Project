@@ -2,7 +2,7 @@ import random
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal
-from models import db, Game, Round, Bet, Outcome, Wallet, Transaction, User
+from models import db, Game, Round, Bet, Outcome, Wallet, Transaction, User, Horse, HorseRunner, HorseResult
 
 
 class HorseRacing:
@@ -10,24 +10,16 @@ class HorseRacing:
     Horse Racing Game Logic Handler
     
     This class manages all horse racing functionality including:
-    - Starting new races
-    - Managing betting
-    - Running races and determining winners
-    - Calculating payouts
-    - Race status management
+    - Starting new races with real horse data
+    - Managing betting on specific horses
+    - Running races and determining winners based on horse stats
+    - Calculating payouts based on odds
+    - Race status management with detailed horse information
     """
     
     def __init__(self):
         self.game_code = 'HORSE'
         self.num_horses = 6
-        self.horse_names = {
-            1: "Lightning Bolt",
-            2: "Thunder Strike", 
-            3: "Wind Runner",
-            4: "Fire Dash",
-            5: "Storm Chaser",
-            6: "Star Galloper"
-        }
         
     def get_game(self):
         """Get the horse racing game from database"""
@@ -50,9 +42,57 @@ class HorseRacing:
                          .order_by(Round.ended_at.desc())\
                          .limit(limit).all()
     
+    def _calculate_horse_odds(self, horse):
+        """
+        Calculate odds for a horse based on their stats
+        
+        Args:
+            horse (Horse): Horse model instance
+            
+        Returns:
+            Decimal: Calculated odds
+        """
+        # Base odds calculation based on horse stats
+        base_odds = Decimal('2.0')
+        
+        # Age factor (younger horses have slightly better odds in general)
+        age_factor = Decimal('1.0')
+        if horse.age <= 4:
+            age_factor = Decimal('0.9')  # Better odds for young horses
+        elif horse.age >= 10:
+            age_factor = Decimal('1.2')  # Worse odds for older horses
+            
+        # Speed factor (higher speed = better odds)
+        speed_factor = Decimal('1.0')
+        if horse.base_speed >= Decimal('8.0'):
+            speed_factor = Decimal('0.8')  # Better odds for fast horses
+        elif horse.base_speed <= Decimal('5.0'):
+            speed_factor = Decimal('1.3')  # Worse odds for slow horses
+            
+        # Temperament factor
+        temperament_factors = {
+            'calm': Decimal('0.9'),
+            'aggressive': Decimal('1.1'),
+            'nervous': Decimal('1.2'),
+            'confident': Decimal('0.8'),
+            'unpredictable': Decimal('1.3')
+        }
+        temperament_factor = temperament_factors.get(horse.temperament.lower(), Decimal('1.0'))
+        
+        # Add some randomness (±0.3)
+        random_factor = Decimal(str(random.uniform(0.7, 1.3)))
+        
+        # Calculate final odds
+        odds = base_odds * age_factor * speed_factor * temperament_factor * random_factor
+        
+        # Ensure odds are within reasonable range (1.2 to 8.0)
+        odds = max(Decimal('1.2'), min(odds, Decimal('8.0')))
+        
+        return round(odds, 2)
+    
     def start_new_race(self):
         """
-        Start a new horse race round
+        Start a new horse race round with real horses
         
         Returns:
             dict: Success status and round_id or error message
@@ -67,6 +107,14 @@ class HorseRacing:
             if active_round:
                 return {'success': False, 'message': 'Race already in progress'}
             
+            # Get available horses from database
+            available_horses = Horse.query.all()
+            if len(available_horses) < self.num_horses:
+                return {'success': False, 'message': f'Not enough horses in database. Need {self.num_horses}, found {len(available_horses)}'}
+            
+            # Select random horses for this race
+            race_horses = random.sample(available_horses, self.num_horses)
+            
             # Create new round
             new_round = Round(
                 game_id=game.game_id,
@@ -74,6 +122,20 @@ class HorseRacing:
                 rng_seed=f"horse_seed_{random.randint(100000, 999999)}"
             )
             db.session.add(new_round)
+            db.session.flush()  # Get the round_id
+            
+            # Create horse runners for this race
+            for i, horse in enumerate(race_horses, 1):
+                odds = self._calculate_horse_odds(horse)
+                
+                horse_runner = HorseRunner(
+                    round_id=new_round.round_id,
+                    horse_id=horse.horse_id,
+                    lane_no=i,
+                    odds=odds
+                )
+                db.session.add(horse_runner)
+            
             db.session.commit()
             
             return {'success': True, 'round_id': new_round.round_id}
@@ -82,13 +144,13 @@ class HorseRacing:
             db.session.rollback()
             return {'success': False, 'message': f'Error starting race: {str(e)}'}
     
-    def place_bet(self, user_id, horse_number, bet_amount, bet_type='win'):
+    def place_bet(self, user_id, horse_id, bet_amount, bet_type='win'):
         """
         Place a bet on a horse
         
         Args:
             user_id (int): ID of the user placing the bet
-            horse_number (int): Horse number (1-6)
+            horse_id (int): ID of the horse to bet on
             bet_amount (Decimal): Amount to bet
             bet_type (str): Type of bet ('win', 'place', 'show')
             
@@ -96,10 +158,6 @@ class HorseRacing:
             dict: Success status and message
         """
         try:
-            # Validate inputs
-            if not horse_number or horse_number < 1 or horse_number > self.num_horses:
-                return {'success': False, 'message': 'Invalid horse selection'}
-            
             if bet_amount <= 0:
                 return {'success': False, 'message': 'Bet amount must be positive'}
             
@@ -115,6 +173,15 @@ class HorseRacing:
             active_round = self.get_active_round()
             if not active_round:
                 return {'success': False, 'message': 'No active race'}
+            
+            # Validate that the horse is actually running in this race
+            horse_runner = HorseRunner.query.filter_by(
+                round_id=active_round.round_id,
+                horse_id=horse_id
+            ).first()
+            
+            if not horse_runner:
+                return {'success': False, 'message': 'Selected horse is not running in this race'}
             
             # Get user's wallet
             user = User.query.get(user_id)
@@ -143,12 +210,17 @@ class HorseRacing:
             )
             db.session.add(transaction)
             
-            # Create bet
+            # Create bet with horse_id and lane information
             bet = Bet(
                 round_id=active_round.round_id,
                 user_id=user_id,
                 amount=bet_amount,
-                choice_data={'bet_type': bet_type, 'horse': horse_number},
+                choice_data={
+                    'bet_type': bet_type, 
+                    'horse_id': horse_id,
+                    'lane_no': horse_runner.lane_no,
+                    'odds': float(horse_runner.odds)
+                },
                 placed_at=datetime.now()
             )
             db.session.add(bet)
@@ -160,9 +232,99 @@ class HorseRacing:
             db.session.rollback()
             return {'success': False, 'message': f'Error placing bet: {str(e)}'}
     
+    def _simulate_race_times(self, horse_runners):
+        """
+        Simulate a live horse race where horses run simultaneously 
+        and we record the exact timestamp when each horse crosses the finish line
+        
+        Args:
+            horse_runners (list): List of HorseRunner objects
+            
+        Returns:
+            dict: horse_id -> finish_timestamp mapping
+        """
+        import time
+        
+        # Race parameters
+        race_distance = 200  # meters (shorter sprint race for more realistic times)
+        simulation_speed = 1000  # Speed up simulation (1000x faster than real time)
+        
+        # Calculate each horse's running speed in meters per second
+        horses_data = {}
+        for runner in horse_runners:
+            horse = runner.horse
+            
+            # Base speed calculation (convert horse.base_speed to m/s)
+            # Assume base_speed is on a scale of 1-10, convert to realistic horse speeds (15-25 m/s)
+            base_speed_ms = 15.0 + (float(horse.base_speed) * 1.0)  # 15-25 m/s range
+            
+            # Temperament affects speed consistency during the race
+            temperament_effects = {
+                'calm': {'stability': 0.95, 'variance': 0.02},       # Very consistent
+                'confident': {'stability': 0.98, 'variance': 0.015}, # Most consistent  
+                'aggressive': {'stability': 0.85, 'variance': 0.08}, # Fast but erratic
+                'nervous': {'stability': 0.80, 'variance': 0.12},    # Very inconsistent
+                'unpredictable': {'stability': 0.75, 'variance': 0.15} # Extremely variable
+            }
+            
+            effects = temperament_effects.get(horse.temperament.lower(), 
+                                            {'stability': 0.90, 'variance': 0.05})
+            
+            # Age affects overall performance
+            age_modifier = 1.0
+            if horse.age < 3:
+                age_modifier = 0.85  # Young horses not at peak
+            elif horse.age <= 6:
+                age_modifier = 1.0   # Prime age
+            elif horse.age <= 9:
+                age_modifier = 0.95  # Slightly past prime
+            else:
+                age_modifier = 0.80  # Older horses slower
+            
+            horses_data[runner.horse_id] = {
+                'base_speed': base_speed_ms * age_modifier,
+                'stability': effects['stability'],
+                'variance': effects['variance'],
+                'position': 0.0,  # Current position in meters
+                'finished': False,
+                'finish_time': None
+            }
+        
+        # Simulate the race step by step
+        current_time = 0.0
+        time_step = 0.001  # 1 millisecond steps for precision
+        finish_times = {}
+        
+        while len(finish_times) < len(horse_runners) and current_time < 30.0:  # Max 30 seconds
+            current_time += time_step
+            
+            for horse_id, data in horses_data.items():
+                if not data['finished']:
+                    # Calculate current speed with random variation
+                    speed_variation = random.uniform(-data['variance'], data['variance'])
+                    current_speed = data['base_speed'] * (data['stability'] + speed_variation)
+                    
+                    # Move horse forward
+                    data['position'] += current_speed * time_step
+                    
+                    # Check if horse crossed finish line
+                    if data['position'] >= race_distance:
+                        data['finished'] = True
+                        data['finish_time'] = current_time
+                        finish_times[horse_id] = round(current_time, 3)
+        
+        # Handle any horses that didn't finish (shouldn't happen with realistic parameters)
+        for horse_id, data in horses_data.items():
+            if horse_id not in finish_times:
+                # Assign a time based on how far they got
+                estimated_time = 30.0 + random.uniform(0.1, 1.0)
+                finish_times[horse_id] = round(estimated_time, 3)
+        
+        return finish_times
+
     def run_race(self):
         """
-        Execute the horse race and determine winner
+        Execute the horse race and determine winner based on horse stats
         
         Returns:
             dict: Race results including winner, order, and round_id
@@ -182,15 +344,42 @@ class HorseRacing:
             if not bets:
                 return {'success': False, 'message': 'No bets placed'}
             
-            # Generate race outcome
-            horses = list(range(1, self.num_horses + 1))
-            random.shuffle(horses)
+            # Get horse runners for this race
+            horse_runners = HorseRunner.query.filter_by(round_id=active_round.round_id).all()
+            if not horse_runners:
+                return {'success': False, 'message': 'No horses in this race'}
             
-            # Create outcome
+            # Simulate the race
+            race_times = self._simulate_race_times(horse_runners)
+            
+            # Sort horses by race time (fastest first)
+            sorted_results = sorted(race_times.items(), key=lambda x: x[1])
+            
+            # Create horse results
+            for position, (horse_id, race_time) in enumerate(sorted_results, 1):
+                runner = next(r for r in horse_runners if r.horse_id == horse_id)
+                
+                horse_result = HorseResult(
+                    round_id=active_round.round_id,
+                    horse_id=horse_id,
+                    lane_no=runner.lane_no,
+                    finish_place=position,
+                    race_time_sec=Decimal(str(race_time))
+                )
+                db.session.add(horse_result)
+            
+            # Create outcome with race order
+            winner_horse_id = sorted_results[0][0]
+            outcome_data = {
+                'winner_horse_id': winner_horse_id,
+                'finish_order': [horse_id for horse_id, _ in sorted_results],
+                'race_times': race_times
+            }
+            
             outcome = Outcome(
                 round_id=active_round.round_id,
-                outcome_data={'order': horses},
-                payout_multiplier=Decimal('2.5')
+                outcome_data=outcome_data,
+                payout_multiplier=Decimal('2.5')  # Base multiplier, will be adjusted per bet
             )
             db.session.add(outcome)
             db.session.flush()  # Get outcome ID
@@ -204,10 +393,25 @@ class HorseRacing:
                 bet.settled_at = datetime.now()
                 bet.outcome_id = outcome.outcome_id
                 
-                # Check if bet won (horse finished first)
-                if bet.choice_data['horse'] == horses[0]:
-                    # Winner gets payout
-                    payout = bet.amount * outcome.payout_multiplier
+                # Check if bet won based on bet type
+                bet_horse_id = bet.choice_data['horse_id']
+                bet_type = bet.choice_data.get('bet_type', 'win')
+                
+                won = False
+                if bet_type == 'win':
+                    # Horse must finish first
+                    won = (bet_horse_id == winner_horse_id)
+                elif bet_type == 'place':
+                    # Horse must finish in top 2
+                    won = (bet_horse_id in outcome_data['finish_order'][:2])
+                elif bet_type == 'show':
+                    # Horse must finish in top 3
+                    won = (bet_horse_id in outcome_data['finish_order'][:3])
+                
+                if won:
+                    # Calculate payout based on original odds from the bet
+                    original_odds = Decimal(str(bet.choice_data.get('odds', 2.5)))
+                    payout = bet.amount * original_odds
                     bet.payout_amount = payout
                     
                     # Add to wallet
@@ -224,9 +428,11 @@ class HorseRacing:
                     
                     winners.append({
                         'user_id': bet.user_id,
-                        'horse': bet.choice_data['horse'],
+                        'horse_id': bet_horse_id,
+                        'lane_no': bet.choice_data.get('lane_no'),
                         'bet_amount': float(bet.amount),
-                        'payout': float(payout)
+                        'payout': float(payout),
+                        'odds': float(original_odds)
                     })
                 else:
                     bet.payout_amount = Decimal('0')
@@ -235,8 +441,9 @@ class HorseRacing:
             
             return {
                 'success': True,
-                'winner': horses[0],
-                'order': horses,
+                'winner_horse_id': winner_horse_id,
+                'finish_order': outcome_data['finish_order'],
+                'race_times': outcome_data['race_times'],
                 'round_id': active_round.round_id,
                 'winners': winners,
                 'total_bets': len(bets)
@@ -248,13 +455,13 @@ class HorseRacing:
     
     def get_race_status(self, user_id=None):
         """
-        Get current race status
+        Get current race status with detailed horse information
         
         Args:
             user_id (int, optional): User ID to check for user-specific bet info
             
         Returns:
-            dict: Race status information
+            dict: Race status information including horses and their details
         """
         try:
             active_round = self.get_active_round()
@@ -263,11 +470,28 @@ class HorseRacing:
                 # Count bets in this round
                 bet_count = Bet.query.filter_by(round_id=active_round.round_id).count()
                 
+                # Get horse runners for this race
+                horse_runners = HorseRunner.query.filter_by(round_id=active_round.round_id).all()
+                
+                # Format horse information
+                horses = []
+                for runner in horse_runners:
+                    horses.append({
+                        'horse_id': runner.horse_id,
+                        'name': runner.horse.name,
+                        'age': runner.horse.age,
+                        'base_speed': float(runner.horse.base_speed),
+                        'temperament': runner.horse.temperament,
+                        'lane_no': runner.lane_no,
+                        'odds': float(runner.odds)
+                    })
+                
                 status = {
                     'active': True,
                     'round_id': active_round.round_id,
                     'bet_count': bet_count,
                     'started_at': active_round.started_at.isoformat(),
+                    'horses': horses,
                     'user_has_bet': False,
                     'user_bet': None
                 }
@@ -277,10 +501,16 @@ class HorseRacing:
                     user_bet = Bet.query.filter_by(round_id=active_round.round_id, user_id=user_id).first()
                     if user_bet:
                         status['user_has_bet'] = True
+                        horse_id = user_bet.choice_data['horse_id']
+                        odds = Decimal(str(user_bet.choice_data.get('odds', 2.5)))
+                        
                         status['user_bet'] = {
-                            'horse': user_bet.choice_data['horse'],
+                            'horse_id': horse_id,
+                            'lane_no': user_bet.choice_data.get('lane_no'),
+                            'bet_type': user_bet.choice_data.get('bet_type', 'win'),
                             'amount': float(user_bet.amount),
-                            'potential_payout': float(user_bet.amount * Decimal('2.5'))
+                            'odds': float(odds),
+                            'potential_payout': float(user_bet.amount * odds)
                         }
                 
                 return status
@@ -292,22 +522,41 @@ class HorseRacing:
     
     def get_horse_info(self):
         """
-        Get information about all horses
+        Get information about all horses in the database
         
         Returns:
-            dict: Horse information with names and numbers
+            dict: Horse information with stats and details
         """
-        return {
-            'horses': [
-                {
-                    'number': i,
-                    'name': self.horse_names[i],
-                    'emoji': '🐴' if i % 2 == 1 else ('🐎' if i % 3 == 0 else '🏇')
-                }
-                for i in range(1, self.num_horses + 1)
-            ],
-            'total_horses': self.num_horses
-        }
+        try:
+            horses = Horse.query.all()
+            
+            horse_data = []
+            for horse in horses:
+                # Calculate recent performance (simplified)
+                recent_results = HorseResult.query.filter_by(horse_id=horse.horse_id)\
+                                                .order_by(HorseResult.round_id.desc())\
+                                                .limit(5).all()
+                
+                avg_finish = sum(r.finish_place for r in recent_results) / len(recent_results) if recent_results else 0
+                
+                horse_data.append({
+                    'horse_id': horse.horse_id,
+                    'name': horse.name,
+                    'age': horse.age,
+                    'base_speed': float(horse.base_speed),
+                    'temperament': horse.temperament,
+                    'races_run': len(recent_results),
+                    'avg_finish': round(avg_finish, 2) if avg_finish else None,
+                    'emoji': '🐴' if horse.horse_id % 2 == 1 else ('🐎' if horse.horse_id % 3 == 0 else '🏇')
+                })
+            
+            return {
+                'horses': horse_data,
+                'total_horses': len(horses)
+            }
+            
+        except Exception as e:
+            return {'error': str(e), 'horses': [], 'total_horses': 0}
     
     def get_betting_stats(self, round_id=None):
         """
@@ -317,7 +566,7 @@ class HorseRacing:
             round_id (int, optional): Specific round ID
             
         Returns:
-            dict: Betting statistics
+            dict: Betting statistics with horse details
         """
         try:
             if round_id:
@@ -334,29 +583,43 @@ class HorseRacing:
             total_bets = len(bets)
             total_amount = sum(bet.amount for bet in bets)
             
-            # Bets per horse
+            # Get horse runners for this round
+            horse_runners = HorseRunner.query.filter_by(round_id=target_round.round_id).all()
+            
+            # Initialize horse betting stats
             horse_bets = {}
-            for i in range(1, self.num_horses + 1):
-                horse_bets[i] = {
+            for runner in horse_runners:
+                horse_bets[runner.horse_id] = {
                     'count': 0,
                     'amount': Decimal('0'),
-                    'name': self.horse_names[i]
+                    'name': runner.horse.name,
+                    'lane_no': runner.lane_no,
+                    'odds': float(runner.odds)
                 }
             
+            # Count bets per horse
             for bet in bets:
-                horse_num = bet.choice_data['horse']
-                horse_bets[horse_num]['count'] += 1
-                horse_bets[horse_num]['amount'] += bet.amount
+                horse_id = bet.choice_data['horse_id']
+                if horse_id in horse_bets:
+                    horse_bets[horse_id]['count'] += 1
+                    horse_bets[horse_id]['amount'] += bet.amount
+            
+            # Convert to serializable format
+            horse_bets_formatted = {}
+            for horse_id, stats in horse_bets.items():
+                horse_bets_formatted[horse_id] = {
+                    'count': stats['count'],
+                    'amount': float(stats['amount']),
+                    'name': stats['name'],
+                    'lane_no': stats['lane_no'],
+                    'odds': stats['odds']
+                }
             
             return {
                 'round_id': target_round.round_id,
                 'total_bets': total_bets,
                 'total_amount': float(total_amount),
-                'horse_bets': {k: {
-                    'count': v['count'],
-                    'amount': float(v['amount']),
-                    'name': v['name']
-                } for k, v in horse_bets.items()},
+                'horse_bets': horse_bets_formatted,
                 'average_bet': float(total_amount / total_bets) if total_bets > 0 else 0
             }
             

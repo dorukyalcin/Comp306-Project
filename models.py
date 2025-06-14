@@ -100,3 +100,48 @@ class SarcasTemp(db.Model):
     template_text = db.Column(db.Text)
     severity_level = db.Column(db.SmallInteger)
     user_settings = db.relationship('UserSettings', back_populates='sarcas_template')
+
+
+# Horse Racing specific models
+class Horse(db.Model):
+    __tablename__ = 'horses'
+    horse_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(40), unique=True, nullable=False)
+    age = db.Column(db.SmallInteger, db.CheckConstraint('age BETWEEN 2 AND 15'), nullable=False)
+    base_speed = db.Column(NUMERIC(4,1), db.CheckConstraint('base_speed > 0'), nullable=False)
+    temperament = db.Column(db.String(20), nullable=False)
+    
+    # Relationships
+    runners = db.relationship('HorseRunner', back_populates='horse')
+
+
+class HorseRunner(db.Model):
+    __tablename__ = 'horse_runners'
+    round_id = db.Column(db.BigInteger, db.ForeignKey('rounds.round_id', ondelete='CASCADE'), primary_key=True)
+    horse_id = db.Column(db.Integer, db.ForeignKey('horses.horse_id'), primary_key=True)
+    lane_no = db.Column(db.SmallInteger, db.CheckConstraint('lane_no BETWEEN 1 AND 6'), nullable=False)
+    odds = db.Column(NUMERIC(6,3), nullable=False)
+    
+    # Relationships
+    round = db.relationship('Round', backref='horse_runners')
+    horse = db.relationship('Horse', back_populates='runners')
+    result = db.relationship('HorseResult', back_populates='runner', uselist=False)
+
+
+class HorseResult(db.Model):
+    __tablename__ = 'horse_results'
+    round_id = db.Column(db.BigInteger, primary_key=True)
+    horse_id = db.Column(db.Integer, primary_key=True)
+    lane_no = db.Column(db.SmallInteger, nullable=False)
+    finish_place = db.Column(db.SmallInteger, db.CheckConstraint('finish_place BETWEEN 1 AND 6'), nullable=False)
+    race_time_sec = db.Column(NUMERIC(6,3), nullable=False)
+    
+    # Composite foreign key
+    __table_args__ = (
+        db.ForeignKeyConstraint(['round_id', 'horse_id'], ['horse_runners.round_id', 'horse_runners.horse_id']),
+        db.ForeignKeyConstraint(['horse_id'], ['horses.horse_id']),
+    )
+    
+    # Relationships
+    runner = db.relationship('HorseRunner', back_populates='result')
+    horse = db.relationship('Horse', primaryjoin='HorseResult.horse_id == Horse.horse_id')

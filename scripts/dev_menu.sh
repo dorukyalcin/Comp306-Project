@@ -15,13 +15,20 @@ echo "🌱 DATA MANAGEMENT:"
 echo "4) Seed Data Only     - Add comprehensive data to existing DB"
 echo "5) Quick View         - Show current database status"
 echo ""
+echo "🐎 HORSE RACING:"
+echo "8) Horse Racing View  - Show detailed horse racing data"
+echo "9) Seed Horses Only   - Add only horse data to database"
+echo ""
 echo "🔧 DIRECT COMMANDS:"
 echo "6) View All Data      - Detailed database inspection"
 echo "7) Reset DB Only      - Reset database only (keep containers)"
 echo ""
+echo "🛠️  TROUBLESHOOTING:"
+echo "10) Fix Missing Wallets - Create wallets for users without them"
+echo ""
 echo "0) Exit"
 echo ""
-read -p "Enter your choice (0-7): " choice
+read -p "Enter your choice (0-10): " choice
 
 case $choice in
     1)
@@ -69,6 +76,74 @@ case $choice in
             echo "❌ Containers not running. Start them first with option 1 or 2."
         fi
         ;;
+    8)
+        echo ""
+        echo "🐎 Viewing Horse Racing Data..."
+        if docker-compose ps | grep -q "Up"; then
+            docker-compose exec web python -c "
+import sys
+sys.path.insert(0, '/app')
+from app import app, db
+from models import *
+from games import HorseRacing
+with app.app_context():
+    hr = HorseRacing()
+    print('🐎 HORSE RACING SYSTEM STATUS')
+    print('=' * 40)
+    print(f'🐴 Total Horses: {Horse.query.count()}')
+    print(f'🏁 Active Race Runners: {HorseRunner.query.count()}')
+    print(f'🏆 Completed Race Results: {HorseResult.query.count()}')
+    print()
+    if Horse.query.count() > 0:
+        print('🌟 Sample Horses:')
+        for horse in Horse.query.limit(5):
+            print(f'   • {horse.name} (Age: {horse.age}, Speed: {horse.base_speed}, {horse.temperament.title()})')
+        print()
+        active_round = hr.get_active_round()
+        if active_round:
+            print(f'🏁 ACTIVE RACE: Round {active_round.round_id}')
+        else:
+            print('✨ No active race - ready to start new race!')
+        print()
+        print('🎯 Game Configuration:')
+        game = hr.get_game()
+        if game:
+            print(f'   Min Bet: {game.min_bet} | Max Bet: {game.max_bet}')
+            print(f'   House Edge: {game.house_edge * 100}%')
+        print()
+        validation = hr.validate_game_setup()
+        if validation['valid']:
+            print('✅ Horse Racing System: READY')
+        else:
+            print(f'❌ Horse Racing System: {validation[\"message\"]}')
+    else:
+        print('⚠️  No horses found! Run option 9 to seed horses.')
+    print('=' * 40)
+"
+        else
+            echo "❌ Containers not running. Start them first with option 1 or 2."
+        fi
+        ;;
+    9)
+        echo ""
+        echo "🐎 Seeding Horses Only..."
+        if docker-compose ps | grep -q "Up"; then
+            docker-compose run --rm web python seeding/seed_horses.py
+            echo "✅ Horse seeding complete!"
+        else
+            echo "❌ Containers not running. Start them first with option 1 or 2."
+        fi
+        ;;
+    10)
+        echo ""
+        echo "🛠️  Fixing Missing Wallets..."
+        if docker-compose ps | grep -q "Up"; then
+            docker-compose run --rm web python seeding/fix_missing_wallets.py
+            echo "✅ Wallet fix complete!"
+        else
+            echo "❌ Containers not running. Start them first with option 1 or 2."
+        fi
+        ;;
     0)
         echo ""
         echo "👋 Goodbye!"
@@ -76,7 +151,7 @@ case $choice in
         ;;
     *)
         echo ""
-        echo "❌ Invalid choice. Please run again and select 0-7."
+        echo "❌ Invalid choice. Please run again and select 0-10."
         exit 1
         ;;
 esac
@@ -85,4 +160,5 @@ echo ""
 echo "🎯 Operation completed!"
 echo "💡 Run './scripts/dev_menu.sh' again for more operations."
 echo "🌐 Site URL: http://localhost:8000"
+echo "🐎 Horse Racing: http://localhost:8000/horse-racing"
 echo "==============================================" 

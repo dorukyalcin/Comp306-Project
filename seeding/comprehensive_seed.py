@@ -4,7 +4,8 @@ sys.path.insert(0, '/app')
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
-from models import User, UserSettings, Wallet, Transaction, Game, Round, Outcome, Bet, SarcasTemp
+from models import User, UserSettings, Wallet, Transaction, Game, Round, Outcome, Bet, SarcasTemp, Horse, HorseRunner, HorseResult
+from games.horse_racing import HorseRacing
 from werkzeug.security import generate_password_hash
 from decimal import Decimal
 import random
@@ -38,10 +39,16 @@ def comprehensive_seed():
         # 3. SEED FINANCIAL DATA (wallets and transactions)
         wallets = seed_financial_data(users)
         
-        # 4. SEED GAMING DATA (rounds, outcomes, bets)
+        # 4. SEED HORSE DATA (for horse racing game)
+        seed_horses()
+        
+        # 5. SEED COMPLETED HORSE RACES (for recent winners display)
+        seed_completed_horse_races(users)
+        
+        # 6. SEED GAMING DATA (rounds, outcomes, bets)
         seed_gaming_data(users)
         
-        # 5. SEED USER SETTINGS (links to sarcastic templates)
+        # 7. SEED USER SETTINGS (links to sarcastic templates)
         seed_user_settings(users)
         
         db.session.commit()
@@ -222,6 +229,251 @@ def seed_financial_data(users):
     print(f"   ✓ Created {len(transactions)} transactions (deposits, withdrawals, wins, losses)")
     return wallets
 
+def seed_horses():
+    """
+    HORSE RACING DATA
+    Creates diverse horse data for the racing game:
+    - 24 horses with unique characteristics
+    - Varied ages, speeds, and temperaments
+    - Balanced for interesting racing dynamics
+    """
+    print("\n🐎 Seeding Horse Racing Data...")
+    
+    # Horse data with varied stats for interesting racing dynamics
+    horses_data = [
+        # Young speedsters
+        {"name": "Lightning Bolt", "age": 3, "base_speed": Decimal("9.2"), "temperament": "confident"},
+        {"name": "Thunder Strike", "age": 4, "base_speed": Decimal("8.8"), "temperament": "aggressive"},
+        {"name": "Wind Runner", "age": 2, "base_speed": Decimal("9.0"), "temperament": "nervous"},
+        
+        # Prime age horses with balanced stats
+        {"name": "Fire Dash", "age": 5, "base_speed": Decimal("8.5"), "temperament": "calm"},
+        {"name": "Storm Chaser", "age": 6, "base_speed": Decimal("8.3"), "temperament": "confident"},
+        {"name": "Star Galloper", "age": 7, "base_speed": Decimal("8.1"), "temperament": "calm"},
+        
+        # Experienced but variable horses
+        {"name": "Midnight Express", "age": 8, "base_speed": Decimal("7.8"), "temperament": "unpredictable"},
+        {"name": "Golden Arrow", "age": 9, "base_speed": Decimal("7.5"), "temperament": "calm"},
+        {"name": "Silver Streak", "age": 10, "base_speed": Decimal("7.2"), "temperament": "aggressive"},
+        
+        # Veteran horses with character
+        {"name": "Old Thunder", "age": 12, "base_speed": Decimal("6.8"), "temperament": "calm"},
+        {"name": "Wise Runner", "age": 11, "base_speed": Decimal("7.0"), "temperament": "confident"},
+        {"name": "Iron Will", "age": 13, "base_speed": Decimal("6.5"), "temperament": "unpredictable"},
+        
+        # Wild cards - horses with extreme characteristics
+        {"name": "Chaos Theory", "age": 4, "base_speed": Decimal("8.9"), "temperament": "unpredictable"},
+        {"name": "Zen Master", "age": 6, "base_speed": Decimal("8.0"), "temperament": "calm"},
+        {"name": "Hot Head", "age": 5, "base_speed": Decimal("8.7"), "temperament": "aggressive"},
+        
+        # Newcomers with potential
+        {"name": "Rising Star", "age": 3, "base_speed": Decimal("8.4"), "temperament": "nervous"},
+        {"name": "Dream Chaser", "age": 4, "base_speed": Decimal("8.6"), "temperament": "confident"},
+        {"name": "Night Fury", "age": 5, "base_speed": Decimal("8.2"), "temperament": "aggressive"},
+        
+        # Character horses with backstories
+        {"name": "Phoenix Rising", "age": 7, "base_speed": Decimal("7.9"), "temperament": "confident"},
+        {"name": "Desert Storm", "age": 8, "base_speed": Decimal("7.6"), "temperament": "unpredictable"},
+        {"name": "Arctic Wind", "age": 6, "base_speed": Decimal("8.1"), "temperament": "calm"},
+        {"name": "Volcanic Ash", "age": 9, "base_speed": Decimal("7.3"), "temperament": "aggressive"},
+        
+        # The underdogs
+        {"name": "Lucky Charm", "age": 10, "base_speed": Decimal("6.9"), "temperament": "nervous"},
+        {"name": "Dark Horse", "age": 11, "base_speed": Decimal("7.1"), "temperament": "unpredictable"},
+    ]
+    
+    # Clear existing horses
+    existing_count = Horse.query.count()
+    if existing_count > 0:
+        print(f"   Clearing {existing_count} existing horses...")
+        Horse.query.delete()
+    
+    # Add new horses
+    horses_created = 0
+    for horse_data in horses_data:
+        try:
+            horse = Horse(**horse_data)
+            db.session.add(horse)
+            horses_created += 1
+        except Exception as e:
+            print(f"   ✗ Failed to add {horse_data['name']}: {str(e)}")
+    
+    print(f"   ✓ Created {horses_created} horses with diverse characteristics")
+    print(f"   ✓ Age range: 2-13 years")
+    print(f"   ✓ Speed range: 6.5-9.2")
+    print(f"   ✓ Temperaments: calm, confident, aggressive, nervous, unpredictable")
+
+def seed_completed_horse_races(users):
+    """
+    HORSE RACING HISTORY
+    Creates completed horse races with proper database entries:
+    - 8-10 completed horse races
+    - Proper HorseRunner and HorseResult entries
+    - Realistic betting activity
+    - Winners for recent results display
+    """
+    print("\n🏁 Seeding Completed Horse Racing History...")
+    
+    # Get horse racing game
+    horse_game = Game.query.filter_by(code='HORSE').first()
+    if not horse_game:
+        print("   ⚠️  Horse racing game not found! Skipping horse race history.")
+        return
+    
+    # Get all horses
+    all_horses = Horse.query.all()
+    if len(all_horses) < 6:
+        print("   ⚠️  Not enough horses found! Need at least 6 horses.")
+        return
+    
+    races_created = 0
+    total_bets = 0
+    
+    # Create 8-10 completed races
+    for race_num in range(8, 11):
+        try:
+            # Create race round (completed in the past)
+            start_time = datetime.now() - timedelta(days=random.randint(1, 30), hours=random.randint(0, 23))
+            end_time = start_time + timedelta(minutes=random.randint(15, 45))
+            
+            race_round = Round(
+                game_id=horse_game.game_id,
+                started_at=start_time,
+                ended_at=end_time,
+                rng_seed=f"horse_seed_{random.randint(100000, 999999)}"
+            )
+            db.session.add(race_round)
+            db.session.flush()  # Get round_id
+            
+            # Select 6 random horses for this race
+            race_horses = random.sample(all_horses, 6)
+            
+            # Create horse runners with realistic odds
+            horse_runners = []
+            for lane_no, horse in enumerate(race_horses, 1):
+                # Calculate odds based on horse stats (simplified version)
+                base_odds = Decimal('2.0')
+                speed_factor = Decimal('1.0')
+                if horse.base_speed >= Decimal('8.0'):
+                    speed_factor = Decimal('0.8')  # Better odds for fast horses
+                elif horse.base_speed <= Decimal('7.0'):
+                    speed_factor = Decimal('1.3')  # Worse odds for slow horses
+                
+                temperament_factors = {
+                    'confident': Decimal('0.8'),
+                    'calm': Decimal('0.9'),
+                    'aggressive': Decimal('1.1'),
+                    'nervous': Decimal('1.2'),
+                    'unpredictable': Decimal('1.3')
+                }
+                temperament_factor = temperament_factors.get(horse.temperament, Decimal('1.0'))
+                
+                odds = base_odds * speed_factor * temperament_factor * Decimal(str(random.uniform(0.8, 1.2)))
+                odds = max(Decimal('1.2'), min(odds, Decimal('8.0')))
+                
+                runner = HorseRunner(
+                    round_id=race_round.round_id,
+                    horse_id=horse.horse_id,
+                    lane_no=lane_no,
+                    odds=round(odds, 2)
+                )
+                horse_runners.append(runner)
+                db.session.add(runner)
+            
+            db.session.flush()  # Save runners
+            
+            # Simulate race using new realistic timing system
+            horse_racing = HorseRacing()
+            race_times = horse_racing._simulate_race_times(horse_runners)
+            
+            # Sort by race time to get finish order (lowest time = first place)
+            sorted_results = sorted(race_times.items(), key=lambda x: x[1])
+            winner_horse_id = sorted_results[0][0]
+            finish_order = [horse_id for horse_id, _ in sorted_results]
+            
+            # Create horse results with realistic finish timestamps
+            for position, (horse_id, finish_timestamp) in enumerate(sorted_results, 1):
+                runner = next(r for r in horse_runners if r.horse_id == horse_id)
+                result = HorseResult(
+                    round_id=race_round.round_id,
+                    horse_id=horse_id,
+                    lane_no=runner.lane_no,
+                    finish_place=position,
+                    race_time_sec=Decimal(str(finish_timestamp))
+                )
+                db.session.add(result)
+            
+            # Create outcome with proper structure
+            outcome_data = {
+                'winner_horse_id': winner_horse_id,
+                'finish_order': finish_order,
+                'race_times': race_times
+            }
+            
+            outcome = Outcome(
+                round_id=race_round.round_id,
+                outcome_data=outcome_data,
+                payout_multiplier=Decimal('2.5')
+            )
+            db.session.add(outcome)
+            db.session.flush()  # Get outcome_id
+            
+            # Create realistic bets for this race
+            num_bets = random.randint(3, 8)
+            race_users = random.sample(users, min(num_bets, len(users)))
+            
+            for user in race_users:
+                # Pick a random horse from this race
+                bet_horse = random.choice(race_horses)
+                bet_runner = next(r for r in horse_runners if r.horse_id == bet_horse.horse_id)
+                bet_type = random.choice(['win', 'place', 'show'])
+                
+                # Generate bet amount
+                bet_amount = Decimal(str(round(random.uniform(5.0, 100.0), 2)))
+                
+                # Determine if bet won
+                bet_won = False
+                if bet_type == 'win':
+                    bet_won = (bet_horse.horse_id == winner_horse_id)
+                elif bet_type == 'place':
+                    bet_won = (bet_horse.horse_id in finish_order[:2])
+                elif bet_type == 'show':
+                    bet_won = (bet_horse.horse_id in finish_order[:3])
+                
+                # Calculate payout
+                payout_amount = Decimal('0')
+                if bet_won:
+                    payout_amount = bet_amount * bet_runner.odds
+                
+                bet = Bet(
+                    round_id=race_round.round_id,
+                    user_id=user.user_id,
+                    amount=bet_amount,
+                    choice_data={
+                        'bet_type': bet_type,
+                        'horse_id': bet_horse.horse_id,
+                        'lane_no': bet_runner.lane_no,
+                        'odds': float(bet_runner.odds)
+                    },
+                    placed_at=start_time + timedelta(minutes=random.randint(1, 10)),
+                    settled_at=end_time,
+                    outcome_id=outcome.outcome_id,
+                    payout_amount=payout_amount
+                )
+                db.session.add(bet)
+                total_bets += 1
+            
+            races_created += 1
+            
+        except Exception as e:
+            print(f"   ✗ Failed to create race {race_num}: {str(e)}")
+            db.session.rollback()
+            continue
+    
+    print(f"   ✓ Created {races_created} completed horse races")
+    print(f"   ✓ Generated {total_bets} realistic horse racing bets")
+    print(f"   ✓ Recent winners will now appear in the UI")
+
 def seed_gaming_data(users):
     """
     REQUIREMENT 3: Gaming Data
@@ -242,9 +494,15 @@ def seed_gaming_data(users):
     outcomes = []
     bets = []
     
-    # Create 25 game rounds
+    # Filter out horse racing game since we handle it separately
+    non_horse_games = [g for g in games if g.code != 'HORSE']
+    if not non_horse_games:
+        print("   ⚠️  No non-horse games found for general gaming data.")
+        return
+    
+    # Create 25 game rounds (excluding horse racing)
     for i in range(25):
-        game = random.choice(games)
+        game = random.choice(non_horse_games)
         
         # Create round
         start_time = datetime.now() - timedelta(days=random.randint(0, 30))
@@ -347,9 +605,40 @@ def seed_user_settings(users):
 def generate_outcome_for_game(game_code):
     """Generate realistic outcome data based on game type"""
     if game_code == "HORSE":
-        order = list(range(1, 7))
-        random.shuffle(order)
-        return {"order": order}, Decimal("2.5")
+        # Get random horses for this race outcome
+        all_horses = Horse.query.all()
+        if len(all_horses) >= 6:
+            race_horses = random.sample(all_horses, 6)
+            
+            # Create mock horse runners for the simulation
+            mock_runners = []
+            for i, horse in enumerate(race_horses, 1):
+                mock_runner = type('MockRunner', (), {
+                    'horse_id': horse.horse_id,
+                    'horse': horse,
+                    'lane_no': i
+                })()
+                mock_runners.append(mock_runner)
+            
+            # Use realistic race simulation
+            horse_racing = HorseRacing()
+            race_times = horse_racing._simulate_race_times(mock_runners)
+            
+            # Sort by race time to get finish order (lowest time = first place)
+            sorted_results = sorted(race_times.items(), key=lambda x: x[1])
+            winner_horse_id = sorted_results[0][0]
+            finish_order = [horse_id for horse_id, _ in sorted_results]
+            
+            return {
+                "winner_horse_id": winner_horse_id,
+                "finish_order": finish_order,
+                "race_times": race_times
+            }, Decimal("2.5")
+        else:
+            # Fallback if not enough horses
+            order = list(range(1, 7))
+            random.shuffle(order)
+            return {"order": order}, Decimal("2.5")
     
     elif game_code == "BJ21":
         results = ["win", "lose", "push", "blackjack"]
@@ -378,7 +667,17 @@ def generate_outcome_for_game(game_code):
 def generate_choice_for_game(game_code):
     """Generate realistic choice data based on game type"""
     if game_code == "HORSE":
-        return {"bet_type": "win", "horse": random.randint(1, 6)}
+        # Get a random horse for betting
+        all_horses = Horse.query.all()
+        if all_horses:
+            random_horse = random.choice(all_horses)
+            return {
+                "bet_type": random.choice(["win", "place", "show"]),
+                "horse_id": random_horse.horse_id,
+                "lane_no": random.randint(1, 6)  # Random lane assignment
+            }
+        else:
+            return {"bet_type": "win", "horse": random.randint(1, 6)}
     elif game_code == "BJ21":
         return {"actions": ["H", "S"], "hand": [10, 6]}
     elif game_code == "ROULETTE":
@@ -407,6 +706,9 @@ def print_seeding_summary():
         print(f"📝 Outcomes: {Outcome.query.count()}")
         print(f"⚙️  User Settings: {UserSettings.query.count()}")
         print(f"😏 Sarcastic Templates: {SarcasTemp.query.count()}")
+        print(f"🐎 Horses: {Horse.query.count()}")
+        print(f"🏁 Horse Runners: {HorseRunner.query.count()}")
+        print(f"🏆 Horse Results: {HorseResult.query.count()}")
         
         # Calculate total money in system
         total_usd = sum(w.balance for w in Wallet.query.filter_by(currency='USD').all())

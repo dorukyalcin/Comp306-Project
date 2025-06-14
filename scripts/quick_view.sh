@@ -27,6 +27,17 @@ with app.app_context():
     print(f'⚙️  User Settings: {UserSettings.query.count()}')
     print(f'😏 Sarcastic Templates: {SarcasTemp.query.count()}')
     print()
+    print('🐎 Horse Racing System:')
+    print(f'   🐴 Horses: {Horse.query.count()}')
+    print(f'   🏁 Active Race Runners: {HorseRunner.query.count()}')
+    print(f'   🏆 Race Results: {HorseResult.query.count()}')
+    if Horse.query.count() > 0:
+        avg_age = db.session.query(db.func.avg(Horse.age)).scalar()
+        avg_speed = db.session.query(db.func.avg(Horse.base_speed)).scalar()
+        print(f'   📊 Average Horse Age: {avg_age:.1f} years')
+        print(f'   📊 Average Horse Speed: {avg_speed:.1f}')
+        print(f'   🎯 Speed Range: {Horse.query.order_by(Horse.base_speed.desc()).first().base_speed} - {Horse.query.order_by(Horse.base_speed.asc()).first().base_speed}')
+    print()
     print('👤 Sample Users:')
     for user in User.query.limit(3):
         role = 'Admin' if user.is_admin else 'Regular'

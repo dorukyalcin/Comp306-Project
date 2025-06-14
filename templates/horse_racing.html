@@ -4,57 +4,21 @@
 
 {% block content %}
 <style>
-    .horse-track {
-        background: linear-gradient(90deg, #2d5016 0%, #4a7c59 50%, #2d5016 100%);
+    .race-container {
+        background: linear-gradient(135deg, #1a4c2e 0%, #2d5016 50%, #1a4c2e 100%);
         border: 3px solid #8B4513;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .race-canvas {
+        width: 100%;
+        height: 400px;
+        background: linear-gradient(90deg, #2d5016 0%, #4a7c59 50%, #2d5016 100%);
+        border: 2px solid #654321;
         border-radius: 10px;
-        min-height: 400px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .horse-lane {
-        border-bottom: 2px dashed #fff;
-        height: 60px;
-        position: relative;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-    }
-    
-    .horse-lane:last-child {
-        border-bottom: none;
-    }
-    
-    .horse {
-        font-size: 30px;
-        transition: transform 0.5s ease;
-        position: absolute;
-        left: 20px;
-    }
-    
-    .horse.running {
-        animation: gallop 2s infinite;
-    }
-    
-    @keyframes gallop {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
-    }
-    
-    .finish-line {
-        position: absolute;
-        right: 20px;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: repeating-linear-gradient(
-            0deg,
-            #fff 0px,
-            #fff 10px,
-            #000 10px,
-            #000 20px
-        );
+        display: block;
     }
     
     .betting-panel {
@@ -101,6 +65,12 @@
     .race-status.running {
         background: #ffc107;
         color: #000;
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
     }
     
     .recent-results {
@@ -109,6 +79,28 @@
         padding: 20px;
         max-height: 400px;
         overflow-y: auto;
+    }
+
+    .horse-stats {
+        font-size: 0.8em;
+        color: #aaa;
+        margin-top: 5px;
+    }
+    
+    .race-info {
+        background: #2a2a2a;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        color: white;
+    }
+    
+    .countdown {
+        font-size: 2em;
+        font-weight: bold;
+        text-align: center;
+        color: #ffc107;
+        margin: 20px 0;
     }
 </style>
 
@@ -128,34 +120,16 @@
                 </div>
             </div>
             
-            <div class="horse-track" id="horseTrack">
-                <div class="finish-line"></div>
-                
-                <!-- Horse Lanes -->
-                <div class="horse-lane">
-                    <span class="horse" id="horse1">🐴</span>
-                    <span class="ms-3 text-white"><strong>Horse #1</strong> - Lightning Bolt</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse2">🐎</span>
-                    <span class="ms-3 text-white"><strong>Horse #2</strong> - Thunder Strike</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse3">🏇</span>
-                    <span class="ms-3 text-white"><strong>Horse #3</strong> - Wind Runner</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse4">🐴</span>
-                    <span class="ms-3 text-white"><strong>Horse #4</strong> - Fire Dash</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse5">🐎</span>
-                    <span class="ms-3 text-white"><strong>Horse #5</strong> - Storm Chaser</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse6">🏇</span>
-                    <span class="ms-3 text-white"><strong>Horse #6</strong> - Star Galloper</span>
-                </div>
+            <!-- Race Track Canvas -->
+            <div class="race-container">
+                <canvas id="raceCanvas" class="race-canvas" width="800" height="400"></canvas>
+                <div id="countdownDisplay" class="countdown" style="display: none;"></div>
+            </div>
+            
+            <!-- Race Info Panel -->
+            <div class="race-info" id="raceInfo" style="display: none;">
+                <h5>🏁 Current Race Information</h5>
+                <div id="raceInfoContent"></div>
             </div>
             
             <!-- Race Results -->
@@ -181,47 +155,24 @@
                 <h5>🎯 Place Your Bet</h5>
                 <p class="text-muted">Select a horse and place your bet!</p>
                 
-                <!-- Horse Selection -->
+                <!-- Horse Selection - Will be populated dynamically -->
                 <div class="mb-3">
                     <label class="form-label">Choose Your Horse:</label>
                     <div id="horseSelection">
-                        <div class="horse-card" data-horse="1" onclick="selectHorse(1)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐴 Horse #1 - Lightning Bolt</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="2" onclick="selectHorse(2)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐎 Horse #2 - Thunder Strike</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="3" onclick="selectHorse(3)">
-                            <div class="d-flex justify-content-between">
-                                <span>🏇 Horse #3 - Wind Runner</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="4" onclick="selectHorse(4)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐴 Horse #4 - Fire Dash</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="5" onclick="selectHorse(5)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐎 Horse #5 - Storm Chaser</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="6" onclick="selectHorse(6)">
-                            <div class="d-flex justify-content-between">
-                                <span>🏇 Horse #6 - Star Galloper</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
+                        <div class="text-center text-muted">
+                            <p>Start a new race to see available horses</p>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Bet Type Selection -->
+                <div class="mb-3">
+                    <label class="form-label">Bet Type:</label>
+                    <select class="form-control" id="betType">
+                        <option value="win">Win (1st place only)</option>
+                        <option value="place">Place (1st or 2nd)</option>
+                        <option value="show">Show (1st, 2nd, or 3rd)</option>
+                    </select>
                 </div>
                 
                 <!-- Bet Amount -->
@@ -243,7 +194,7 @@
             <div class="betting-panel" id="currentBetInfo" style="display: none;">
                 <h5>🎲 Your Current Bet</h5>
                 <div id="betDetails"></div>
-                <button class="btn btn-warning w-100 mt-2" onclick="runRace()">
+                <button class="btn btn-warning w-100 mt-2" onclick="startRaceCountdown()">
                     🏁 Start Race!
                 </button>
             </div>
@@ -256,7 +207,12 @@
                         <div class="mb-2 p-2" style="background: #2a2a2a; border-radius: 5px;">
                             <small class="text-muted">{{ round.ended_at.strftime('%m/%d %H:%M') }}</small>
                             <div>
-                                🏆 Winner: Horse #{{ round.outcome.outcome_data.order[0] }}
+                                {% set winner_horse_id = round.outcome.outcome_data.get('winner_horse_id') %}
+                                {% if winner_horse_id and horses_dict.get(winner_horse_id) %}
+                                    🏆 Winner: {{ horses_dict[winner_horse_id].name }}
+                                {% else %}
+                                    🏆 Winner: Unknown Horse
+                                {% endif %}
                                 <span class="float-end">{{ round.bets|length }} bets</span>
                             </div>
                         </div>
@@ -272,22 +228,242 @@
 <script>
 let selectedHorse = null;
 let currentRoundId = null;
+let currentRaceHorses = [];
+let canvas = null;
+let ctx = null;
+let raceAnimation = null;
+let raceStartTime = null;
+let raceDuration = 20000; // 20 seconds
 
-// Check race status on page load
+// Initialize canvas
 document.addEventListener('DOMContentLoaded', function() {
+    canvas = document.getElementById('raceCanvas');
+    ctx = canvas.getContext('2d');
+    
+    // Set canvas size
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 400;
+    
+    drawEmptyTrack();
     checkRaceStatus();
     setInterval(checkRaceStatus, 2000); // Check every 2 seconds
 });
 
-function selectHorse(horseNumber) {
+function drawEmptyTrack() {
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grass background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, '#2d5016');
+    gradient.addColorStop(0.5, '#4a7c59');
+    gradient.addColorStop(1, '#2d5016');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw lane dividers
+    ctx.strokeStyle = '#ffffff';
+    ctx.setLineDash([10, 10]);
+    ctx.lineWidth = 2;
+    
+    for (let i = 1; i < 6; i++) {
+        const y = (canvas.height / 6) * i;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(canvas.width - 50, y);
+        ctx.stroke();
+    }
+    
+    // Draw finish line
+    ctx.setLineDash([]);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000000';
+    const finishX = canvas.width - 60;
+    
+    for (let i = 0; i < 20; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#000000';
+        ctx.fillRect(finishX, i * 20, 10, 20);
+    }
+    
+    // Draw start line
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(60, 0);
+    ctx.lineTo(60, canvas.height);
+    ctx.stroke();
+    
+    // Add text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏁 Start a New Race! 🏁', canvas.width / 2, canvas.height / 2);
+    ctx.font = '16px Arial';
+    ctx.fillText('6 horses will compete in this race', canvas.width / 2, canvas.height / 2 + 30);
+}
+
+function drawRaceTrack(horses) {
+    if (!ctx || !horses) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grass background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, '#2d5016');
+    gradient.addColorStop(0.5, '#4a7c59');
+    gradient.addColorStop(1, '#2d5016');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw lane dividers
+    ctx.strokeStyle = '#ffffff';
+    ctx.setLineDash([10, 10]);
+    ctx.lineWidth = 2;
+    
+    for (let i = 1; i < 6; i++) {
+        const y = (canvas.height / 6) * i;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(canvas.width - 50, y);
+        ctx.stroke();
+    }
+    
+    // Draw finish line
+    ctx.setLineDash([]);
+    ctx.lineWidth = 4;
+    const finishX = canvas.width - 60;
+    
+    for (let i = 0; i < 20; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#000000';
+        ctx.fillRect(finishX, i * 20, 10, 20);
+    }
+    
+    // Draw start line
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(60, 0);
+    ctx.lineTo(60, canvas.height);
+    ctx.stroke();
+    
+    // Draw horses at starting position
+    horses.forEach((horse, index) => {
+        const laneY = (canvas.height / 6) * index + (canvas.height / 12);
+        drawHorse(70, laneY, horse, index);
+        
+        // Draw horse info
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${horse.lane_no}. ${horse.name}`, 120, laneY - 10);
+        ctx.font = '10px Arial';
+        ctx.fillText(`Odds: ${horse.odds}x | Speed: ${horse.base_speed}`, 120, laneY + 5);
+    });
+}
+
+function drawHorse(x, y, horse, index) {
+    if (!ctx) return;
+    
+    // Horse colors based on index
+    const colors = ['#8B4513', '#654321', '#D2691E', '#A0522D', '#CD853F', '#DEB887'];
+    const horseColor = colors[index % colors.length];
+    
+    // Draw horse body (simplified)
+    ctx.fillStyle = horseColor;
+    ctx.fillRect(x - 15, y - 8, 25, 16);
+    
+    // Draw horse head
+    ctx.fillRect(x + 10, y - 6, 12, 12);
+    
+    // Draw legs
+    ctx.fillStyle = '#654321';
+    ctx.fillRect(x - 10, y + 8, 3, 8);
+    ctx.fillRect(x - 5, y + 8, 3, 8);
+    ctx.fillRect(x + 5, y + 8, 3, 8);
+    ctx.fillRect(x + 10, y + 8, 3, 8);
+    
+    // Draw mane
+    ctx.fillStyle = '#2F4F4F';
+    ctx.fillRect(x + 8, y - 10, 8, 6);
+    
+    // Add horse emoji on top
+    ctx.font = '20px Arial';
+    ctx.fillText('🐎', x - 5, y - 15);
+}
+
+function animateRace(horses, raceResults) {
+    if (!ctx || !horses || !raceResults) return;
+    
+    const startTime = Date.now();
+    const finishX = canvas.width - 80;
+    const startX = 70;
+    const raceDistance = finishX - startX;
+    
+    // Calculate each horse's finish time and speed
+    const horseData = horses.map((horse, index) => {
+        const result = raceResults.find(r => r.horse_id === horse.horse_id);
+        const finishTime = result ? result.race_time_sec * 1000 : (15 + Math.random() * 10) * 1000; // Convert to ms
+        return {
+            ...horse,
+            finishTime: finishTime,
+            currentX: startX,
+            finished: false,
+            laneY: (canvas.height / 6) * index + (canvas.height / 12)
+        };
+    });
+    
+    function animate() {
+        const currentTime = Date.now() - startTime;
+        
+        // Clear and redraw track
+        drawRaceTrack(horses);
+        
+        // Update and draw each horse
+        horseData.forEach((horse, index) => {
+            if (!horse.finished) {
+                // Calculate progress based on time
+                const progress = Math.min(currentTime / horse.finishTime, 1);
+                horse.currentX = startX + (raceDistance * progress);
+                
+                if (progress >= 1) {
+                    horse.finished = true;
+                    horse.currentX = finishX;
+                }
+            }
+            
+            // Add some random bobbing motion
+            const bobbing = Math.sin(currentTime * 0.01 + index) * 2;
+            drawHorse(horse.currentX, horse.laneY + bobbing, horse, index);
+        });
+        
+        // Check if race is finished
+        const allFinished = horseData.every(horse => horse.finished);
+        if (!allFinished && currentTime < 30000) { // Max 30 seconds
+            raceAnimation = requestAnimationFrame(animate);
+        } else {
+            // Race finished
+            raceAnimation = null;
+            setTimeout(() => {
+                showRaceResults(raceResults);
+            }, 1000);
+        }
+    }
+    
+    animate();
+}
+
+function selectHorse(horseId) {
     // Remove previous selection
     document.querySelectorAll('.horse-card').forEach(card => {
         card.classList.remove('selected');
     });
     
     // Add selection to clicked horse
-    document.querySelector(`[data-horse="${horseNumber}"]`).classList.add('selected');
-    selectedHorse = horseNumber;
+    document.querySelector(`[data-horse="${horseId}"]`).classList.add('selected');
+    selectedHorse = horseId;
     
     // Enable place bet button if amount is also entered
     updatePlaceBetButton();
@@ -336,6 +512,8 @@ function placeBet() {
     }
     
     const betAmount = document.getElementById('betAmount').value;
+    const betType = document.getElementById('betType').value;
+    
     if (!betAmount || parseFloat(betAmount) <= 0) {
         alert('Please enter a valid bet amount');
         return;
@@ -347,9 +525,9 @@ function placeBet() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            horse: selectedHorse,
+            horse_id: selectedHorse,
             amount: parseFloat(betAmount),
-            bet_type: 'win'
+            bet_type: betType
         })
     })
     .then(response => response.json())
@@ -369,84 +547,158 @@ function placeBet() {
     });
 }
 
-function runRace() {
-    // Show running animation
-    document.querySelectorAll('.horse').forEach(horse => {
-        horse.classList.add('running');
-    });
+function startRaceCountdown() {
+    const countdownDisplay = document.getElementById('countdownDisplay');
+    const raceStatus = document.getElementById('raceStatus');
     
+    countdownDisplay.style.display = 'block';
+    raceStatus.textContent = 'Race Starting...';
+    raceStatus.className = 'race-status running';
+    
+    let countdown = 3;
+    const countdownInterval = setInterval(() => {
+        if (countdown > 0) {
+            countdownDisplay.textContent = countdown;
+            countdown--;
+        } else {
+            countdownDisplay.textContent = 'GO!';
+            clearInterval(countdownInterval);
+            
+            setTimeout(() => {
+                countdownDisplay.style.display = 'none';
+                runRace();
+            }, 500);
+        }
+    }, 1000);
+}
+
+function runRace() {
     // Update status
     document.getElementById('raceStatus').textContent = 'Race in Progress...';
     document.getElementById('raceStatus').className = 'race-status running';
     
-    // Animate horses
-    animateRace();
-    
-    // Run the race on server
-    setTimeout(() => {
-        fetch('/horse-racing/run-race', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                setTimeout(() => {
-                    showRaceResults(data);
-                    checkRaceStatus();
-                }, 3000);
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error running race');
-        });
-    }, 1000);
-}
-
-function animateRace() {
-    const horses = document.querySelectorAll('.horse');
-    const trackWidth = document.getElementById('horseTrack').offsetWidth - 100;
-    
-    horses.forEach((horse, index) => {
-        const randomSpeed = Math.random() * 2000 + 2000; // 2-4 seconds
-        const randomDelay = Math.random() * 500; // 0-0.5 second delay
-        
-        setTimeout(() => {
-            horse.style.transform = `translateX(${trackWidth}px)`;
-            horse.style.transition = `transform ${randomSpeed}ms ease-out`;
-        }, randomDelay);
+    // Run the race on server and get results
+    fetch('/horse-racing/run-race', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Start visual race animation with real results
+            const raceResults = data.finish_order.map((horse_id, index) => ({
+                horse_id: horse_id,
+                finish_place: index + 1,
+                race_time_sec: data.race_times[horse_id]
+            }));
+            
+            animateRace(currentRaceHorses, raceResults);
+            
+            // Store results for later display
+            window.lastRaceResults = data;
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error running race');
     });
 }
 
-function showRaceResults(data) {
+function showRaceResults(raceResults) {
+    const data = window.lastRaceResults;
+    if (!data) return;
+    
     const resultsDiv = document.getElementById('raceResults');
     const resultsContent = document.getElementById('resultsContent');
     
-    let resultsHTML = `<strong>🏆 Winner: Horse #${data.winner}</strong><br>`;
+    // Find winner horse info
+    const winnerHorse = currentRaceHorses.find(h => h.horse_id === data.winner_horse_id);
+    
+    let resultsHTML = `<strong>🏆 Winner: ${winnerHorse ? winnerHorse.name : 'Unknown'} (Lane ${winnerHorse ? winnerHorse.lane_no : '?'})</strong><br>`;
     resultsHTML += '<strong>Final Order:</strong><br>';
     
-    data.order.forEach((horse, index) => {
+    data.finish_order.forEach((horse_id, index) => {
         const position = index + 1;
+        const horse = currentRaceHorses.find(h => h.horse_id === horse_id);
+        const time = data.race_times[horse_id];
         const emoji = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
-        resultsHTML += `${emoji} Horse #${horse}<br>`;
+        resultsHTML += `${emoji} ${horse ? horse.name : 'Unknown'} (Lane ${horse ? horse.lane_no : '?'}) - ${time}s<br>`;
     });
+    
+    if (data.winners && data.winners.length > 0) {
+        resultsHTML += '<br><strong>🎉 Winners:</strong><br>';
+        data.winners.forEach(winner => {
+            const horse = currentRaceHorses.find(h => h.horse_id === winner.horse_id);
+            resultsHTML += `💰 $${winner.bet_amount} → $${winner.payout} on ${horse ? horse.name : 'Unknown'}<br>`;
+        });
+    }
     
     resultsContent.innerHTML = resultsHTML;
     resultsDiv.style.display = 'block';
     
-    // Reset horses position after showing results
+    // Update status
+    document.getElementById('raceStatus').textContent = 'Race Finished';
+    document.getElementById('raceStatus').className = 'race-status';
+    
     setTimeout(() => {
-        document.querySelectorAll('.horse').forEach(horse => {
-            horse.style.transform = 'translateX(0)';
-            horse.style.transition = 'transform 0.5s ease';
-            horse.classList.remove('running');
-        });
-    }, 2000);
+        checkRaceStatus();
+    }, 3000);
+}
+
+function updateHorseDisplay(horses) {
+    currentRaceHorses = horses;
+    
+    // Draw horses on canvas
+    drawRaceTrack(horses);
+    
+    // Update race info
+    const raceInfo = document.getElementById('raceInfo');
+    const raceInfoContent = document.getElementById('raceInfoContent');
+    
+    let infoHTML = '<div class="row">';
+    horses.forEach(horse => {
+        const emoji = horse.horse_id % 2 === 1 ? '🐴' : (horse.horse_id % 3 === 0 ? '🐎' : '🏇');
+        infoHTML += `
+            <div class="col-md-4 mb-2">
+                <small>
+                    <strong>Lane ${horse.lane_no}</strong> - ${emoji} ${horse.name}<br>
+                    Age: ${horse.age} | Speed: ${horse.base_speed} | ${horse.temperament}<br>
+                    <span class="badge bg-primary">Odds: ${horse.odds}x</span>
+                </small>
+            </div>
+        `;
+    });
+    infoHTML += '</div>';
+    
+    raceInfoContent.innerHTML = infoHTML;
+    raceInfo.style.display = 'block';
+    
+    // Update betting panel
+    const horseSelection = document.getElementById('horseSelection');
+    let selectionHTML = '';
+    
+    horses.forEach(horse => {
+        const emoji = horse.horse_id % 2 === 1 ? '🐴' : (horse.horse_id % 3 === 0 ? '🐎' : '🏇');
+        selectionHTML += `
+            <div class="horse-card" data-horse="${horse.horse_id}" onclick="selectHorse(${horse.horse_id})">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <span>${emoji} Lane ${horse.lane_no} - ${horse.name}</span>
+                        <div class="horse-stats">
+                            Age: ${horse.age} | Speed: ${horse.base_speed} | ${horse.temperament}
+                        </div>
+                    </div>
+                    <span class="badge bg-primary">Odds: ${horse.odds}x</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    horseSelection.innerHTML = selectionHTML;
 }
 
 function checkRaceStatus() {
@@ -463,6 +715,11 @@ function checkRaceStatus() {
             currentRoundId = data.round_id;
             startRaceBtn.style.display = 'none';
             
+            // Update horse display with actual race horses
+            if (data.horses && data.horses.length > 0) {
+                updateHorseDisplay(data.horses);
+            }
+            
             if (data.user_has_bet) {
                 // User has bet, show race controls
                 raceStatus.textContent = `Betting Closed - ${data.bet_count} bets placed`;
@@ -470,10 +727,12 @@ function checkRaceStatus() {
                 bettingPanel.style.display = 'none';
                 currentBetInfo.style.display = 'block';
                 
+                const betHorse = currentRaceHorses.find(h => h.horse_id === data.user_bet.horse_id);
                 betDetails.innerHTML = `
-                    <p><strong>Your Bet:</strong> Horse #${data.user_bet.horse}</p>
+                    <p><strong>Your Bet:</strong> ${betHorse ? betHorse.name : 'Unknown'} (Lane ${data.user_bet.lane_no})</p>
+                    <p><strong>Bet Type:</strong> ${data.user_bet.bet_type.toUpperCase()}</p>
                     <p><strong>Amount:</strong> $${data.user_bet.amount}</p>
-                    <p><strong>Potential Win:</strong> $${(data.user_bet.amount * 2.5).toFixed(2)}</p>
+                    <p><strong>Potential Win:</strong> $${data.user_bet.potential_payout.toFixed(2)}</p>
                 `;
             } else {
                 // User can still bet
@@ -490,6 +749,16 @@ function checkRaceStatus() {
             bettingPanel.style.display = 'none';
             currentBetInfo.style.display = 'none';
             
+            // Reset displays
+            drawEmptyTrack();
+            document.getElementById('raceInfo').style.display = 'none';
+            
+            document.getElementById('horseSelection').innerHTML = `
+                <div class="text-center text-muted">
+                    <p>Start a new race to see available horses</p>
+                </div>
+            `;
+            
             // Hide race results after a delay
             setTimeout(() => {
                 document.getElementById('raceResults').style.display = 'none';
@@ -500,5 +769,17 @@ function checkRaceStatus() {
         console.error('Error checking race status:', error);
     });
 }
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    if (canvas) {
+        canvas.width = canvas.offsetWidth;
+        if (currentRaceHorses.length > 0) {
+            drawRaceTrack(currentRaceHorses);
+        } else {
+            drawEmptyTrack();
+        }
+    }
+});
 </script>
 {% endblock %} 

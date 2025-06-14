@@ -9,6 +9,7 @@ echo "This will add comprehensive test data to your existing database:"
 echo "   • 12 Users (if database is empty)"
 echo "   • Multi-currency wallets"
 echo "   • Realistic transactions"
+echo "   • 24 Racing horses with diverse characteristics"
 echo "   • Game rounds and betting history"
 echo "   • Sarcastic templates and user settings"
 echo ""
@@ -47,6 +48,13 @@ with app.app_context():
     print(f'🎯 Rounds: {Round.query.count()}')
     print(f'🎲 Bets: {Bet.query.count()}')
     print(f'😏 Sarcastic Templates: {SarcasTemp.query.count()}')
+    print(f'🐎 Horses: {Horse.query.count()}')
+    print(f'🏁 Horse Runners: {HorseRunner.query.count()}')
+    print(f'🏆 Horse Results: {HorseResult.query.count()}')
+    if Horse.query.count() > 0:
+        print('🎯 Horse Racing Ready!')
+    else:
+        print('⚠️  No horses found - run horse seeding script')
 "
 
 echo ""
@@ -54,4 +62,5 @@ echo "✅ SEEDING COMPLETE!"
 echo "============================="
 echo "🌐 Visit: http://localhost:8000"
 echo "👤 Login: Any username with password 'password123'"
+echo "🐎 Try the enhanced horse racing at: /horse-racing"
 echo "=============================" 
