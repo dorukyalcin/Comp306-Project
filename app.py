@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from models import db, User, Wallet, Transaction, Game, Round, Bet, Outcome
+from models import db, User, Wallet, Transaction, Game, Round, Bet, Outcome, Horse, HorseRunner, HorseResult
 from decimal import Decimal
 from werkzeug.utils import secure_filename
 from games import HorseRacing
@@ -255,12 +255,12 @@ def place_horse_bet():
     """Place a bet on a horse"""
     data = request.get_json()
     
-    horse_number = data.get('horse')
+    horse_id = data.get('horse_id')
     bet_amount = Decimal(str(data.get('amount', 0)))
     bet_type = data.get('bet_type', 'win')
     
     hr = HorseRacing()
-    result = hr.place_bet(current_user.user_id, horse_number, bet_amount, bet_type)
+    result = hr.place_bet(current_user.user_id, horse_id, bet_amount, bet_type)
     return jsonify(result)
 
 @app.route('/horse-racing/run-race', methods=['POST'])
