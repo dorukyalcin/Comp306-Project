@@ -261,11 +261,17 @@ def horse_racing():
     active_round = hr.get_active_round()
     recent_rounds = hr.get_recent_rounds()
     
+    # Get all horses for name lookup
+    from models import Horse
+    all_horses = Horse.query.all()
+    horses_dict = {horse.horse_id: horse for horse in all_horses}
+    
     return render_template('horse_racing.html', 
                          game=horse_game, 
                          wallet=wallet,
                          active_round=active_round,
-                         recent_rounds=recent_rounds)
+                         recent_rounds=recent_rounds,
+                         horses_dict=horses_dict)
 
 @app.route('/horse-racing/start-race', methods=['POST'])
 @login_required

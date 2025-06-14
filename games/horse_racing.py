@@ -247,32 +247,36 @@ class HorseRacing:
         for runner in horse_runners:
             horse = runner.horse
             
-            # Base time calculation (lower is better)
+            # Base time calculation (15-25 seconds range for realistic racing)
             # Convert Decimal to float to avoid type mismatch
-            base_time = 20.0 - float(horse.base_speed)  # 20 seconds base minus speed
+            base_time = 25.0 - (float(horse.base_speed) * 1.2)  # Higher speed = lower time
             
             # Add randomness based on temperament
             temperament_variance = {
-                'calm': 0.5,
-                'confident': 0.3,
-                'aggressive': 0.8,
-                'nervous': 1.2,
-                'unpredictable': 1.5
+                'calm': 1.0,        # Consistent performance
+                'confident': 0.8,   # Slightly better consistency
+                'aggressive': 1.5,  # More variable performance
+                'nervous': 2.0,     # Very inconsistent
+                'unpredictable': 2.5 # Extremely variable
             }
             
-            variance = temperament_variance.get(horse.temperament.lower(), 1.0)
+            variance = temperament_variance.get(horse.temperament.lower(), 1.5)
             random_factor = random.uniform(-variance, variance)
             
             # Age factor (prime age is 4-8)
             age_factor = 0.0
-            if horse.age < 4:
+            if horse.age < 3:
+                age_factor = 1.5  # Very young horses may be slower
+            elif horse.age < 4:
                 age_factor = 0.5  # Young horses may be inconsistent
             elif horse.age > 10:
-                age_factor = 1.0  # Older horses may be slower
+                age_factor = 2.0  # Older horses may be slower
+            elif horse.age > 8:
+                age_factor = 1.0  # Aging horses
                 
             final_time = base_time + random_factor + age_factor
             
-            # Ensure times are within reasonable range (15-30 seconds)
+            # Ensure times are within realistic range (15-30 seconds)
             final_time = max(15.0, min(final_time, 30.0))
             
             race_times[runner.horse_id] = round(final_time, 2)
