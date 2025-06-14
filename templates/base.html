@@ -16,12 +16,40 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('horse_racing') }}">
+                                <i class="fas fa-horse"></i> Horse Racing
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('slots') }}">
+                                <i class="fas fa-dice"></i> Slots
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('plinko') }}">
+                                <i class="fas fa-circle"></i> Plinko
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('blackjack') }}">
+                                <i class="fas fa-spade"></i> Blackjack
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('wallet') }}">
                                 <i class="fas fa-coins text-warning"></i>
-                                <span class="text-light">{{ current_user.wallets[0].balance|round(2) }} {{ current_user.wallets[0].currency }}</span>
+                                {% if current_user.wallets %}
+                                    <span class="text-light">{{ current_user.wallets[0].balance|round(2) }} {{ current_user.wallets[0].currency }}</span>
+                                {% else %}
+                                    <span class="text-light">No Wallet</span>
+                                {% endif %}
                             </a>
                         </li>
                         <li class="nav-item">

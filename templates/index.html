@@ -11,7 +11,7 @@
         {% if current_user.is_authenticated %}
             <div class="row">
                 <div class="col-md-4">
-                                            <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4">
                         <div class="card-body">
                             <h5 class="card-title">Horse Racing</h5>
                             <p class="card-text">Bet on horses that might actually run!</p>
@@ -22,9 +22,29 @@
                 <div class="col-md-4">
                     <div class="card bg-dark border-secondary mb-4">
                         <div class="card-body">
+                            <h5 class="card-title">Slots</h5>
+                            <p class="card-text">Spin your way to sarcastically losing!</p>
+                            <a href="{{ url_for('slots') }}" class="btn btn-primary">Play Now</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Plinko</h5>
+                            <p class="card-text">Drop a ball and watch your money disappear!</p>
+                            <a href="{{ url_for('plinko') }}" class="btn btn-primary">Play Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
                             <h5 class="card-title">Blackjack</h5>
                             <p class="card-text">Try to beat the dealer... good luck with that!</p>
-                            <a href="#" class="btn btn-primary">Play Now</a>
+                            <a href="{{ url_for('blackjack') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
                 </div>
@@ -33,7 +53,16 @@
                         <div class="card-body">
                             <h5 class="card-title">Roulette</h5>
                             <p class="card-text">Spin the wheel of fortune... or misfortune!</p>
-                            <a href="#" class="btn btn-primary">Play Now</a>
+                            <a href="#" class="btn btn-secondary disabled">Coming Soon</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Minesweeper</h5>
+                            <p class="card-text">Find the mines... or let them find you!</p>
+                            <a href="#" class="btn btn-secondary disabled">Coming Soon</a>
                         </div>
                     </div>
                 </div>
