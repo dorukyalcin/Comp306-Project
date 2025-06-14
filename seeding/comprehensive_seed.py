@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
 from models import User, UserSettings, Wallet, Transaction, Game, Round, Outcome, Bet, SarcasTemp, Horse, HorseRunner, HorseResult
+from games.horse_racing import HorseRacing
 from werkzeug.security import generate_password_hash
 from decimal import Decimal
 import random
@@ -381,31 +382,24 @@ def seed_completed_horse_races(users):
             
             db.session.flush()  # Save runners
             
-            # Simulate race results
-            race_times = {}
-            for runner in horse_runners:
-                horse = next(h for h in race_horses if h.horse_id == runner.horse_id)
-                # Simulate race time based on horse speed
-                base_time = 25.0 - (float(horse.base_speed) * 1.2)
-                variance = {'calm': 1.0, 'confident': 0.8, 'aggressive': 1.5, 'nervous': 2.0, 'unpredictable': 2.5}
-                random_factor = random.uniform(-variance.get(horse.temperament, 1.5), variance.get(horse.temperament, 1.5))
-                final_time = max(15.0, min(base_time + random_factor, 30.0))
-                race_times[runner.horse_id] = round(final_time, 2)
+            # Simulate race using new realistic timing system
+            horse_racing = HorseRacing()
+            race_times = horse_racing._simulate_race_times(horse_runners)
             
-            # Sort by race time to get finish order
+            # Sort by race time to get finish order (lowest time = first place)
             sorted_results = sorted(race_times.items(), key=lambda x: x[1])
             winner_horse_id = sorted_results[0][0]
             finish_order = [horse_id for horse_id, _ in sorted_results]
             
-            # Create horse results
-            for position, (horse_id, race_time) in enumerate(sorted_results, 1):
+            # Create horse results with realistic finish timestamps
+            for position, (horse_id, finish_timestamp) in enumerate(sorted_results, 1):
                 runner = next(r for r in horse_runners if r.horse_id == horse_id)
                 result = HorseResult(
                     round_id=race_round.round_id,
                     horse_id=horse_id,
                     lane_no=runner.lane_no,
                     finish_place=position,
-                    race_time_sec=Decimal(str(race_time))
+                    race_time_sec=Decimal(str(finish_timestamp))
                 )
                 db.session.add(result)
             
@@ -500,9 +494,15 @@ def seed_gaming_data(users):
     outcomes = []
     bets = []
     
-    # Create 25 game rounds
+    # Filter out horse racing game since we handle it separately
+    non_horse_games = [g for g in games if g.code != 'HORSE']
+    if not non_horse_games:
+        print("   ⚠️  No non-horse games found for general gaming data.")
+        return
+    
+    # Create 25 game rounds (excluding horse racing)
     for i in range(25):
-        game = random.choice(games)
+        game = random.choice(non_horse_games)
         
         # Create round
         start_time = datetime.now() - timedelta(days=random.randint(0, 30))
@@ -605,9 +605,40 @@ def seed_user_settings(users):
 def generate_outcome_for_game(game_code):
     """Generate realistic outcome data based on game type"""
     if game_code == "HORSE":
-        order = list(range(1, 7))
-        random.shuffle(order)
-        return {"order": order}, Decimal("2.5")
+        # Get random horses for this race outcome
+        all_horses = Horse.query.all()
+        if len(all_horses) >= 6:
+            race_horses = random.sample(all_horses, 6)
+            
+            # Create mock horse runners for the simulation
+            mock_runners = []
+            for i, horse in enumerate(race_horses, 1):
+                mock_runner = type('MockRunner', (), {
+                    'horse_id': horse.horse_id,
+                    'horse': horse,
+                    'lane_no': i
+                })()
+                mock_runners.append(mock_runner)
+            
+            # Use realistic race simulation
+            horse_racing = HorseRacing()
+            race_times = horse_racing._simulate_race_times(mock_runners)
+            
+            # Sort by race time to get finish order (lowest time = first place)
+            sorted_results = sorted(race_times.items(), key=lambda x: x[1])
+            winner_horse_id = sorted_results[0][0]
+            finish_order = [horse_id for horse_id, _ in sorted_results]
+            
+            return {
+                "winner_horse_id": winner_horse_id,
+                "finish_order": finish_order,
+                "race_times": race_times
+            }, Decimal("2.5")
+        else:
+            # Fallback if not enough horses
+            order = list(range(1, 7))
+            random.shuffle(order)
+            return {"order": order}, Decimal("2.5")
     
     elif game_code == "BJ21":
         results = ["win", "lose", "push", "blackjack"]
@@ -636,7 +667,17 @@ def generate_outcome_for_game(game_code):
 def generate_choice_for_game(game_code):
     """Generate realistic choice data based on game type"""
     if game_code == "HORSE":
-        return {"bet_type": "win", "horse": random.randint(1, 6)}
+        # Get a random horse for betting
+        all_horses = Horse.query.all()
+        if all_horses:
+            random_horse = random.choice(all_horses)
+            return {
+                "bet_type": random.choice(["win", "place", "show"]),
+                "horse_id": random_horse.horse_id,
+                "lane_no": random.randint(1, 6)  # Random lane assignment
+            }
+        else:
+            return {"bet_type": "win", "horse": random.randint(1, 6)}
     elif game_code == "BJ21":
         return {"actions": ["H", "S"], "hand": [10, 6]}
     elif game_code == "ROULETTE":

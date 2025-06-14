@@ -134,7 +134,7 @@ class HorseResult(db.Model):
     horse_id = db.Column(db.Integer, primary_key=True)
     lane_no = db.Column(db.SmallInteger, nullable=False)
     finish_place = db.Column(db.SmallInteger, db.CheckConstraint('finish_place BETWEEN 1 AND 6'), nullable=False)
-    race_time_sec = db.Column(NUMERIC(6,2), nullable=False)
+    race_time_sec = db.Column(NUMERIC(6,3), nullable=False)
     
     # Composite foreign key
     __table_args__ = (

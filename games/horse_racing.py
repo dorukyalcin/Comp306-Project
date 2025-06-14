@@ -234,54 +234,93 @@ class HorseRacing:
     
     def _simulate_race_times(self, horse_runners):
         """
-        Simulate race times for horses based on their stats
+        Simulate a live horse race where horses run simultaneously 
+        and we record the exact timestamp when each horse crosses the finish line
         
         Args:
             horse_runners (list): List of HorseRunner objects
             
         Returns:
-            dict: horse_id -> race_time mapping
+            dict: horse_id -> finish_timestamp mapping
         """
-        race_times = {}
+        import time
         
+        # Race parameters
+        race_distance = 200  # meters (shorter sprint race for more realistic times)
+        simulation_speed = 1000  # Speed up simulation (1000x faster than real time)
+        
+        # Calculate each horse's running speed in meters per second
+        horses_data = {}
         for runner in horse_runners:
             horse = runner.horse
             
-            # Base time calculation (15-25 seconds range for realistic racing)
-            # Convert Decimal to float to avoid type mismatch
-            base_time = 25.0 - (float(horse.base_speed) * 1.2)  # Higher speed = lower time
+            # Base speed calculation (convert horse.base_speed to m/s)
+            # Assume base_speed is on a scale of 1-10, convert to realistic horse speeds (15-25 m/s)
+            base_speed_ms = 15.0 + (float(horse.base_speed) * 1.0)  # 15-25 m/s range
             
-            # Add randomness based on temperament
-            temperament_variance = {
-                'calm': 1.0,        # Consistent performance
-                'confident': 0.8,   # Slightly better consistency
-                'aggressive': 1.5,  # More variable performance
-                'nervous': 2.0,     # Very inconsistent
-                'unpredictable': 2.5 # Extremely variable
+            # Temperament affects speed consistency during the race
+            temperament_effects = {
+                'calm': {'stability': 0.95, 'variance': 0.02},       # Very consistent
+                'confident': {'stability': 0.98, 'variance': 0.015}, # Most consistent  
+                'aggressive': {'stability': 0.85, 'variance': 0.08}, # Fast but erratic
+                'nervous': {'stability': 0.80, 'variance': 0.12},    # Very inconsistent
+                'unpredictable': {'stability': 0.75, 'variance': 0.15} # Extremely variable
             }
             
-            variance = temperament_variance.get(horse.temperament.lower(), 1.5)
-            random_factor = random.uniform(-variance, variance)
+            effects = temperament_effects.get(horse.temperament.lower(), 
+                                            {'stability': 0.90, 'variance': 0.05})
             
-            # Age factor (prime age is 4-8)
-            age_factor = 0.0
+            # Age affects overall performance
+            age_modifier = 1.0
             if horse.age < 3:
-                age_factor = 1.5  # Very young horses may be slower
-            elif horse.age < 4:
-                age_factor = 0.5  # Young horses may be inconsistent
-            elif horse.age > 10:
-                age_factor = 2.0  # Older horses may be slower
-            elif horse.age > 8:
-                age_factor = 1.0  # Aging horses
-                
-            final_time = base_time + random_factor + age_factor
+                age_modifier = 0.85  # Young horses not at peak
+            elif horse.age <= 6:
+                age_modifier = 1.0   # Prime age
+            elif horse.age <= 9:
+                age_modifier = 0.95  # Slightly past prime
+            else:
+                age_modifier = 0.80  # Older horses slower
             
-            # Ensure times are within realistic range (15-30 seconds)
-            final_time = max(15.0, min(final_time, 30.0))
+            horses_data[runner.horse_id] = {
+                'base_speed': base_speed_ms * age_modifier,
+                'stability': effects['stability'],
+                'variance': effects['variance'],
+                'position': 0.0,  # Current position in meters
+                'finished': False,
+                'finish_time': None
+            }
+        
+        # Simulate the race step by step
+        current_time = 0.0
+        time_step = 0.001  # 1 millisecond steps for precision
+        finish_times = {}
+        
+        while len(finish_times) < len(horse_runners) and current_time < 30.0:  # Max 30 seconds
+            current_time += time_step
             
-            race_times[runner.horse_id] = round(final_time, 2)
-            
-        return race_times
+            for horse_id, data in horses_data.items():
+                if not data['finished']:
+                    # Calculate current speed with random variation
+                    speed_variation = random.uniform(-data['variance'], data['variance'])
+                    current_speed = data['base_speed'] * (data['stability'] + speed_variation)
+                    
+                    # Move horse forward
+                    data['position'] += current_speed * time_step
+                    
+                    # Check if horse crossed finish line
+                    if data['position'] >= race_distance:
+                        data['finished'] = True
+                        data['finish_time'] = current_time
+                        finish_times[horse_id] = round(current_time, 3)
+        
+        # Handle any horses that didn't finish (shouldn't happen with realistic parameters)
+        for horse_id, data in horses_data.items():
+            if horse_id not in finish_times:
+                # Assign a time based on how far they got
+                estimated_time = 30.0 + random.uniform(0.1, 1.0)
+                finish_times[horse_id] = round(estimated_time, 3)
+        
+        return finish_times
 
     def run_race(self):
         """
