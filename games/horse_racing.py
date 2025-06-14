@@ -248,7 +248,8 @@ class HorseRacing:
             horse = runner.horse
             
             # Base time calculation (lower is better)
-            base_time = float(20.0 - horse.base_speed)  # 20 seconds base minus speed
+            # Convert Decimal to float to avoid type mismatch
+            base_time = 20.0 - float(horse.base_speed)  # 20 seconds base minus speed
             
             # Add randomness based on temperament
             temperament_variance = {
@@ -263,7 +264,7 @@ class HorseRacing:
             random_factor = random.uniform(-variance, variance)
             
             # Age factor (prime age is 4-8)
-            age_factor = 0
+            age_factor = 0.0
             if horse.age < 4:
                 age_factor = 0.5  # Young horses may be inconsistent
             elif horse.age > 10:

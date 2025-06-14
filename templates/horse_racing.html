@@ -110,6 +110,12 @@
         max-height: 400px;
         overflow-y: auto;
     }
+
+    .horse-stats {
+        font-size: 0.8em;
+        color: #aaa;
+        margin-top: 5px;
+    }
 </style>
 
 <div class="container-fluid">
@@ -131,30 +137,12 @@
             <div class="horse-track" id="horseTrack">
                 <div class="finish-line"></div>
                 
-                <!-- Horse Lanes -->
-                <div class="horse-lane">
-                    <span class="horse" id="horse1">🐴</span>
-                    <span class="ms-3 text-white"><strong>Horse #1</strong> - Lightning Bolt</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse2">🐎</span>
-                    <span class="ms-3 text-white"><strong>Horse #2</strong> - Thunder Strike</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse3">🏇</span>
-                    <span class="ms-3 text-white"><strong>Horse #3</strong> - Wind Runner</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse4">🐴</span>
-                    <span class="ms-3 text-white"><strong>Horse #4</strong> - Fire Dash</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse5">🐎</span>
-                    <span class="ms-3 text-white"><strong>Horse #5</strong> - Storm Chaser</span>
-                </div>
-                <div class="horse-lane">
-                    <span class="horse" id="horse6">🏇</span>
-                    <span class="ms-3 text-white"><strong>Horse #6</strong> - Star Galloper</span>
+                <!-- Horse Lanes - Will be populated dynamically -->
+                <div id="horseLanes">
+                    <div class="text-center text-white mt-5">
+                        <h4>🏁 Start a new race to see the horses! 🏁</h4>
+                        <p>6 random horses will be selected from our stable of 24 champions</p>
+                    </div>
                 </div>
             </div>
             
@@ -181,47 +169,24 @@
                 <h5>🎯 Place Your Bet</h5>
                 <p class="text-muted">Select a horse and place your bet!</p>
                 
-                <!-- Horse Selection -->
+                <!-- Horse Selection - Will be populated dynamically -->
                 <div class="mb-3">
                     <label class="form-label">Choose Your Horse:</label>
                     <div id="horseSelection">
-                        <div class="horse-card" data-horse="1" onclick="selectHorse(1)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐴 Horse #1 - Lightning Bolt</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="2" onclick="selectHorse(2)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐎 Horse #2 - Thunder Strike</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="3" onclick="selectHorse(3)">
-                            <div class="d-flex justify-content-between">
-                                <span>🏇 Horse #3 - Wind Runner</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="4" onclick="selectHorse(4)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐴 Horse #4 - Fire Dash</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="5" onclick="selectHorse(5)">
-                            <div class="d-flex justify-content-between">
-                                <span>🐎 Horse #5 - Storm Chaser</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
-                        </div>
-                        <div class="horse-card" data-horse="6" onclick="selectHorse(6)">
-                            <div class="d-flex justify-content-between">
-                                <span>🏇 Horse #6 - Star Galloper</span>
-                                <span class="badge bg-primary">Odds: 2.5x</span>
-                            </div>
+                        <div class="text-center text-muted">
+                            <p>Start a new race to see available horses</p>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Bet Type Selection -->
+                <div class="mb-3">
+                    <label class="form-label">Bet Type:</label>
+                    <select class="form-control" id="betType">
+                        <option value="win">Win (1st place only)</option>
+                        <option value="place">Place (1st or 2nd)</option>
+                        <option value="show">Show (1st, 2nd, or 3rd)</option>
+                    </select>
                 </div>
                 
                 <!-- Bet Amount -->
@@ -272,6 +237,7 @@
 <script>
 let selectedHorse = null;
 let currentRoundId = null;
+let currentRaceHorses = [];
 
 // Check race status on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -279,15 +245,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkRaceStatus, 2000); // Check every 2 seconds
 });
 
-function selectHorse(horseNumber) {
+function selectHorse(horseId) {
     // Remove previous selection
     document.querySelectorAll('.horse-card').forEach(card => {
         card.classList.remove('selected');
     });
     
     // Add selection to clicked horse
-    document.querySelector(`[data-horse="${horseNumber}"]`).classList.add('selected');
-    selectedHorse = horseNumber;
+    document.querySelector(`[data-horse="${horseId}"]`).classList.add('selected');
+    selectedHorse = horseId;
     
     // Enable place bet button if amount is also entered
     updatePlaceBetButton();
@@ -336,6 +302,8 @@ function placeBet() {
     }
     
     const betAmount = document.getElementById('betAmount').value;
+    const betType = document.getElementById('betType').value;
+    
     if (!betAmount || parseFloat(betAmount) <= 0) {
         alert('Please enter a valid bet amount');
         return;
@@ -347,9 +315,9 @@ function placeBet() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            horse: selectedHorse,
+            horse_id: selectedHorse,
             amount: parseFloat(betAmount),
-            bet_type: 'win'
+            bet_type: betType
         })
     })
     .then(response => response.json())
@@ -427,14 +395,26 @@ function showRaceResults(data) {
     const resultsDiv = document.getElementById('raceResults');
     const resultsContent = document.getElementById('resultsContent');
     
-    let resultsHTML = `<strong>🏆 Winner: Horse #${data.winner}</strong><br>`;
+    // Find winner horse info
+    const winnerHorse = currentRaceHorses.find(h => h.horse_id === data.winner_horse_id);
+    
+    let resultsHTML = `<strong>🏆 Winner: ${winnerHorse ? winnerHorse.name : 'Unknown'} (Lane ${winnerHorse ? winnerHorse.lane_no : '?'})</strong><br>`;
     resultsHTML += '<strong>Final Order:</strong><br>';
     
-    data.order.forEach((horse, index) => {
+    data.finish_order.forEach((horse_id, index) => {
         const position = index + 1;
+        const horse = currentRaceHorses.find(h => h.horse_id === horse_id);
         const emoji = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
-        resultsHTML += `${emoji} Horse #${horse}<br>`;
+        resultsHTML += `${emoji} ${horse ? horse.name : 'Unknown'} (Lane ${horse ? horse.lane_no : '?'})<br>`;
     });
+    
+    if (data.winners && data.winners.length > 0) {
+        resultsHTML += '<br><strong>🎉 Winners:</strong><br>';
+        data.winners.forEach(winner => {
+            const horse = currentRaceHorses.find(h => h.horse_id === winner.horse_id);
+            resultsHTML += `💰 $${winner.bet_amount} → $${winner.payout} on ${horse ? horse.name : 'Unknown'}<br>`;
+        });
+    }
     
     resultsContent.innerHTML = resultsHTML;
     resultsDiv.style.display = 'block';
@@ -447,6 +427,54 @@ function showRaceResults(data) {
             horse.classList.remove('running');
         });
     }, 2000);
+}
+
+function updateHorseDisplay(horses) {
+    currentRaceHorses = horses;
+    
+    // Update race track
+    const horseLanes = document.getElementById('horseLanes');
+    let lanesHTML = '';
+    
+    horses.forEach((horse, index) => {
+        const emoji = horse.horse_id % 2 === 1 ? '🐴' : (horse.horse_id % 3 === 0 ? '🐎' : '🏇');
+        lanesHTML += `
+            <div class="horse-lane">
+                <span class="horse" id="horse${horse.lane_no}">${emoji}</span>
+                <span class="ms-3 text-white">
+                    <strong>Lane ${horse.lane_no}</strong> - ${horse.name}
+                    <div class="horse-stats">
+                        Age: ${horse.age} | Speed: ${horse.base_speed} | ${horse.temperament} | Odds: ${horse.odds}x
+                    </div>
+                </span>
+            </div>
+        `;
+    });
+    
+    horseLanes.innerHTML = lanesHTML;
+    
+    // Update betting panel
+    const horseSelection = document.getElementById('horseSelection');
+    let selectionHTML = '';
+    
+    horses.forEach(horse => {
+        const emoji = horse.horse_id % 2 === 1 ? '🐴' : (horse.horse_id % 3 === 0 ? '🐎' : '🏇');
+        selectionHTML += `
+            <div class="horse-card" data-horse="${horse.horse_id}" onclick="selectHorse(${horse.horse_id})">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <span>${emoji} Lane ${horse.lane_no} - ${horse.name}</span>
+                        <div class="horse-stats">
+                            Age: ${horse.age} | Speed: ${horse.base_speed} | ${horse.temperament}
+                        </div>
+                    </div>
+                    <span class="badge bg-primary">Odds: ${horse.odds}x</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    horseSelection.innerHTML = selectionHTML;
 }
 
 function checkRaceStatus() {
@@ -463,6 +491,11 @@ function checkRaceStatus() {
             currentRoundId = data.round_id;
             startRaceBtn.style.display = 'none';
             
+            // Update horse display with actual race horses
+            if (data.horses && data.horses.length > 0) {
+                updateHorseDisplay(data.horses);
+            }
+            
             if (data.user_has_bet) {
                 // User has bet, show race controls
                 raceStatus.textContent = `Betting Closed - ${data.bet_count} bets placed`;
@@ -470,10 +503,12 @@ function checkRaceStatus() {
                 bettingPanel.style.display = 'none';
                 currentBetInfo.style.display = 'block';
                 
+                const betHorse = currentRaceHorses.find(h => h.horse_id === data.user_bet.horse_id);
                 betDetails.innerHTML = `
-                    <p><strong>Your Bet:</strong> Horse #${data.user_bet.horse}</p>
+                    <p><strong>Your Bet:</strong> ${betHorse ? betHorse.name : 'Unknown'} (Lane ${data.user_bet.lane_no})</p>
+                    <p><strong>Bet Type:</strong> ${data.user_bet.bet_type.toUpperCase()}</p>
                     <p><strong>Amount:</strong> $${data.user_bet.amount}</p>
-                    <p><strong>Potential Win:</strong> $${(data.user_bet.amount * 2.5).toFixed(2)}</p>
+                    <p><strong>Potential Win:</strong> $${data.user_bet.potential_payout.toFixed(2)}</p>
                 `;
             } else {
                 // User can still bet
@@ -489,6 +524,20 @@ function checkRaceStatus() {
             startRaceBtn.style.display = 'block';
             bettingPanel.style.display = 'none';
             currentBetInfo.style.display = 'none';
+            
+            // Reset horse display
+            document.getElementById('horseLanes').innerHTML = `
+                <div class="text-center text-white mt-5">
+                    <h4>🏁 Start a new race to see the horses! 🏁</h4>
+                    <p>6 random horses will be selected from our stable of 24 champions</p>
+                </div>
+            `;
+            
+            document.getElementById('horseSelection').innerHTML = `
+                <div class="text-center text-muted">
+                    <p>Start a new race to see available horses</p>
+                </div>
+            `;
             
             // Hide race results after a delay
             setTimeout(() => {

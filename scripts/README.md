@@ -26,7 +26,7 @@ This provides an interactive menu with all available operations.
   - Builds and starts Docker containers
   - Creates database tables
   - Seeds games catalog
-  - Adds comprehensive test data (12 users, transactions, bets, sarcasm system)
+  - Adds comprehensive test data (12 users, 24 horses, transactions, bets, sarcasm system)
 - **Usage:** `./scripts/fresh_start.sh`
 - **Result:** Full testing environment with ~400 database records
 
@@ -35,7 +35,7 @@ This provides an interactive menu with all available operations.
 - **What it does:**
   - Stops containers gracefully
   - Rebuilds and restarts containers
-  - Preserves all user data, transactions, etc.
+  - Preserves all user data, transactions, horses, etc.
 - **Usage:** `./scripts/safe_restart.sh`
 - **Safe:** No data loss
 
@@ -55,7 +55,7 @@ This provides an interactive menu with all available operations.
 - **Purpose:** Adds comprehensive test data to existing database
 - **What it does:**
   - Checks if containers are running
-  - Runs comprehensive seeding script
+  - Runs comprehensive seeding script (including 24 horses)
   - Skips if users already exist
 - **Usage:** `./scripts/seed_only.sh`
 - **Safe:** Won't duplicate data
@@ -65,16 +65,36 @@ This provides an interactive menu with all available operations.
 - **What it does:**
   - Shows container status
   - Displays database record counts
+  - Shows horse racing system status
   - Shows sample users and total money
 - **Usage:** `./scripts/quick_view.sh`
 - **Fast:** Quick overview without detailed data
+
+### 🐎 **Horse Racing Scripts**
+
+#### `dev_menu.sh` Option 8 - Horse Racing View
+- **Purpose:** Shows detailed horse racing system status
+- **What it does:**
+  - Displays all horses with their stats
+  - Shows active race status
+  - Validates horse racing system configuration
+- **Usage:** `./scripts/dev_menu.sh` → Select option 8
+- **Info:** Detailed horse racing diagnostics
+
+#### `dev_menu.sh` Option 9 - Seed Horses Only
+- **Purpose:** Adds only horse data to database
+- **What it does:**
+  - Seeds 24 diverse horses with realistic characteristics
+  - Safe to run multiple times
+- **Usage:** `./scripts/dev_menu.sh` → Select option 9
+- **Quick:** Fast horse-only seeding
 
 ### 🔧 **Utility Scripts**
 
 #### `dev_menu.sh` - Interactive Development Menu
 - **Purpose:** Provides menu-driven access to all scripts
 - **What it does:**
-  - Shows all available operations
+  - Shows all available operations (now includes horse racing options)
   - Guides you through choices
   - Handles errors gracefully
 - **Usage:** `./scripts/dev_menu.sh`
@@ -95,12 +115,18 @@ This provides an interactive menu with all available operations.
 
 ### Add Test Data to Empty Site
 ```bash
-./scripts/seed_only.sh    # Add comprehensive test data
+./scripts/seed_only.sh    # Add comprehensive test data (includes horses)
 ```
 
 ### Check Current Status
 ```bash
 ./scripts/quick_view.sh   # Quick database overview
+```
+
+### Horse Racing Specific Workflows
+```bash
+./scripts/dev_menu.sh     # Select option 8 for horse racing status
+./scripts/dev_menu.sh     # Select option 9 to seed horses only
 ```
 
 ## 📊 What Gets Created by Fresh Start
@@ -111,14 +137,25 @@ This provides an interactive menu with all available operations.
 - **Password:** `password123` for all users
 
 ### Financial Data
-- **26 Wallets** across 3 currencies (USD, EUR, BTC)
-- **143 Transactions** with realistic patterns
-- **$4,000+ USD, €3,000+ EUR, ₿3+ BTC** total money
+- **22 Wallets** across 3 currencies (USD, EUR, BTC)
+- **142 Transactions** with realistic patterns
+- **$4,800+ USD, €100M+ EUR, ₿0.6+ BTC** total money
 
 ### Gaming Data
-- **6 Casino Games** (Horse Racing, Blackjack, Roulette, Slots, Plinko, Minesweeper)
-- **25 Game Rounds** with realistic timing
+- **6 Casino Games** (Enhanced Horse Racing, Blackjack, Roulette, Slots, Plinko, Minesweeper)
+- **29 Game Rounds** with realistic timing
 - **98 Bets** with proper win/loss ratios
+
+### 🐎 Horse Racing System
+- **24 Unique Horses** with diverse characteristics:
+  - **Age Range:** 2-13 years (young speedsters to veteran horses)
+  - **Speed Range:** 6.5-9.2 (creates competitive racing)
+  - **Temperaments:** Confident, Aggressive, Nervous, Calm, Unpredictable
+- **Dynamic Features:**
+  - Physics-based race simulation
+  - Odds calculation based on horse stats
+  - Win/Place/Show betting options
+  - Real-time race results with finishing times
 
 ### Sarcasm System
 - **15 Sarcastic Templates** with 5 severity levels
@@ -147,14 +184,33 @@ This provides an interactive menu with all available operations.
 After running any script that creates data:
 
 1. **Visit:** http://localhost:8000
-2. **Login:** Any username with password `password123`
-3. **Admin Access:** Use `admin_casino` or `admin_sarah`
-4. **Test Features:**
+2. **Horse Racing:** http://localhost:8000/horse-racing
+3. **Login:** Any username with password `password123`
+4. **Admin Access:** Use `admin_casino` or `admin_sarah`
+5. **Test Features:**
+   - **🐎 Enhanced Horse Racing** with 24 real horses
    - Multi-currency wallets
    - Transaction history
    - Casino games
    - Sarcastic feedback
    - User settings
+
+## 🐎 Horse Racing Testing Guide
+
+### Start a New Race
+1. Visit `/horse-racing`
+2. Click "Start New Race"
+3. View the 6 randomly selected horses with their stats and odds
+
+### Place Bets
+- Choose from Win, Place, or Show bets
+- Odds are dynamically calculated based on horse characteristics
+- Minimum bet: $1, Maximum bet: $1000
+
+### Run the Race
+- Physics-based simulation considers age, speed, and temperament
+- View race results with finishing positions and times
+- Automatic payout calculation based on original odds
 
 ## 🔍 Troubleshooting
 
@@ -170,6 +226,12 @@ docker-compose down -v  # Remove everything
 docker-compose logs db   # Check database logs
 ```
 
+### Horse Racing Not Working
+```bash
+./scripts/dev_menu.sh    # Select option 8 to check horse racing status
+./scripts/dev_menu.sh    # Select option 9 to seed horses if missing
+```
+
 ### Want to Start Over Completely
 ```bash
 ./scripts/teardown.sh    # Nuclear option
@@ -182,6 +244,7 @@ docker-compose logs db   # Check database logs
 - Run `quick_view.sh` to check status anytime
 - `safe_restart.sh` is safe for code changes
 - `fresh_start.sh` is perfect for demos
+- Use option 8 in dev menu to check horse racing system
 - `teardown.sh` only when you want to start completely fresh
 
 All scripts are designed to be safe, user-friendly, and provide clear feedback about what they're doing! 

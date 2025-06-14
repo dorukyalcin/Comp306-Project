@@ -133,84 +133,110 @@ def profile():
 @app.route('/wallet', methods=['GET', 'POST'])
 @login_required
 def wallet():
+    # Check if user has a wallet
+    if not current_user.wallets:
+        flash('No wallet found. Please contact support to create a wallet.', 'danger')
+        return redirect(url_for('index'))
+    
+    wallet = current_user.wallets[0]
+    
     if request.method == 'POST':
-        action = request.form.get('action')
-        amount = Decimal(request.form.get('amount', 0))
-        
-        if amount <= 0:
-            flash('Amount must be greater than 0.', 'danger')
-            return redirect(url_for('wallet'))
+        try:
+            action = request.form.get('action')
+            amount_str = request.form.get('amount', '0')
             
-        wallet = current_user.wallets[0]
-        
-        if action == 'deposit':
-            wallet.balance += amount
-            transaction = Transaction(
-                wallet_id=wallet.wallet_id,
-                amount=amount,
-                txn_type='deposit'
-            )
-            db.session.add(transaction)
-            flash(f'Successfully deposited {amount:.2f} {wallet.currency}', 'success')
+            # Validate amount input
+            try:
+                amount = Decimal(amount_str)
+            except (ValueError, TypeError):
+                flash('Invalid amount format. Please enter a valid number.', 'danger')
+                return redirect(url_for('wallet'))
             
-        elif action == 'withdraw':
-            if amount > wallet.balance:
-                flash('Insufficient funds.', 'danger')
+            if amount <= 0:
+                flash('Amount must be greater than 0.', 'danger')
+                return redirect(url_for('wallet'))
+            
+            if action == 'deposit':
+                wallet.balance += amount
+                transaction = Transaction(
+                    wallet_id=wallet.wallet_id,
+                    amount=amount,
+                    txn_type='deposit'
+                )
+                db.session.add(transaction)
+                flash(f'Successfully deposited {amount:.2f} {wallet.currency}', 'success')
+                
+            elif action == 'withdraw':
+                if amount > wallet.balance:
+                    flash('Insufficient funds.', 'danger')
+                    return redirect(url_for('wallet'))
+                    
+                wallet.balance -= amount
+                transaction = Transaction(
+                    wallet_id=wallet.wallet_id,
+                    amount=amount,
+                    txn_type='withdraw'
+                )
+                db.session.add(transaction)
+                flash(f'Successfully withdrew {amount:.2f} {wallet.currency}', 'success')
+            else:
+                flash('Invalid action.', 'danger')
                 return redirect(url_for('wallet'))
                 
-            wallet.balance -= amount
-            transaction = Transaction(
-                wallet_id=wallet.wallet_id,
-                amount=amount,
-                txn_type='withdraw'
-            )
-            db.session.add(transaction)
-            flash(f'Successfully withdrew {amount:.2f} {wallet.currency}', 'success')
+            db.session.commit()
             
-        db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Transaction failed: {str(e)}', 'danger')
+            
         return redirect(url_for('wallet'))
     
-    # Get filter parameters
-    txn_type = request.args.get('type', 'all')
-    sort_by = request.args.get('sort', 'date')
-    sort_order = request.args.get('order', 'desc')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    
-    # Get wallet and transactions
-    wallet = current_user.wallets[0]
-    query = Transaction.query.filter_by(wallet_id=wallet.wallet_id)
-    
-    # Apply filters
-    if txn_type != 'all':
-        query = query.filter_by(txn_type=txn_type)
-    if start_date:
-        query = query.filter(Transaction.created_at >= start_date)
-    if end_date:
-        query = query.filter(Transaction.created_at <= end_date)
-    
-    # Apply sorting
-    if sort_by == 'amount':
-        if sort_order == 'asc':
-            query = query.order_by(Transaction.amount.asc())
-        else:
-            query = query.order_by(Transaction.amount.desc())
-    else:  # sort by date
-        if sort_order == 'asc':
-            query = query.order_by(Transaction.created_at.asc())
-        else:
-            query = query.order_by(Transaction.created_at.desc())
-    
-    transactions = query.all()
+    # GET request - display wallet page
+    try:
+        # Get filter parameters
+        txn_type = request.args.get('type', 'all')
+        sort_by = request.args.get('sort', 'date')
+        sort_order = request.args.get('order', 'desc')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
         
-    return render_template('wallet.html', 
-                         wallet=wallet,
-                         transactions=transactions,
-                         current_type=txn_type,
-                         current_sort=sort_by,
-                         current_order=sort_order,
-                         start_date=start_date,
-                         end_date=end_date)
+        # Get transactions
+        query = Transaction.query.filter_by(wallet_id=wallet.wallet_id)
+        
+        # Apply filters
+        if txn_type != 'all':
+            query = query.filter_by(txn_type=txn_type)
+        if start_date:
+            query = query.filter(Transaction.created_at >= start_date)
+        if end_date:
+            query = query.filter(Transaction.created_at <= end_date)
+        
+        # Apply sorting
+        if sort_by == 'amount':
+            if sort_order == 'asc':
+                query = query.order_by(Transaction.amount.asc())
+            else:
+                query = query.order_by(Transaction.amount.desc())
+        else:  # sort by date
+            if sort_order == 'asc':
+                query = query.order_by(Transaction.created_at.asc())
+            else:
+                query = query.order_by(Transaction.created_at.desc())
+        
+        transactions = query.all()
+        
+        return render_template('wallet.html', 
+                             wallet=wallet,
+                             transactions=transactions,
+                             current_type=txn_type,
+                             current_sort=sort_by,
+                             current_order=sort_order,
+                             start_date=start_date,
+                             end_date=end_date)
+                             
+    except Exception as e:
+        flash(f'Error loading wallet: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/horse-racing')
 @login_required
