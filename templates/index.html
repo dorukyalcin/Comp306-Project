@@ -11,11 +11,11 @@
         {% if current_user.is_authenticated %}
             <div class="row">
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                                            <div class="card bg-dark border-secondary mb-4">
                         <div class="card-body">
                             <h5 class="card-title">Horse Racing</h5>
                             <p class="card-text">Bet on horses that might actually run!</p>
-                            <a href="#" class="btn btn-primary">Play Now</a>
+                            <a href="{{ url_for('horse_racing') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
                 </div>

@@ -4,9 +4,10 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from models import db, User, Wallet, Transaction
+from models import db, User, Wallet, Transaction, Game, Round, Bet, Outcome
 from decimal import Decimal
 from werkzeug.utils import secure_filename
+from games import HorseRacing
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/casino_db')
@@ -210,6 +211,89 @@ def wallet():
                          current_order=sort_order,
                          start_date=start_date,
                          end_date=end_date)
+
+@app.route('/horse-racing')
+@login_required
+def horse_racing():
+    """Main horse racing game page"""
+    hr = HorseRacing()
+    
+    # Validate game setup
+    validation = hr.validate_game_setup()
+    if not validation['valid']:
+        flash(validation['message'], 'danger')
+        return redirect(url_for('index'))
+    
+    # Get user's wallet
+    wallet = current_user.wallets[0] if current_user.wallets else None
+    if not wallet:
+        flash('No wallet found. Please contact support.', 'danger')
+        return redirect(url_for('index'))
+    
+    # Get game data
+    horse_game = hr.get_game()
+    active_round = hr.get_active_round()
+    recent_rounds = hr.get_recent_rounds()
+    
+    return render_template('horse_racing.html', 
+                         game=horse_game, 
+                         wallet=wallet,
+                         active_round=active_round,
+                         recent_rounds=recent_rounds)
+
+@app.route('/horse-racing/start-race', methods=['POST'])
+@login_required
+def start_horse_race():
+    """Start a new horse race round"""
+    hr = HorseRacing()
+    result = hr.start_new_race()
+    return jsonify(result)
+
+@app.route('/horse-racing/place-bet', methods=['POST'])
+@login_required
+def place_horse_bet():
+    """Place a bet on a horse"""
+    data = request.get_json()
+    
+    horse_number = data.get('horse')
+    bet_amount = Decimal(str(data.get('amount', 0)))
+    bet_type = data.get('bet_type', 'win')
+    
+    hr = HorseRacing()
+    result = hr.place_bet(current_user.user_id, horse_number, bet_amount, bet_type)
+    return jsonify(result)
+
+@app.route('/horse-racing/run-race', methods=['POST'])
+@login_required
+def run_horse_race():
+    """Execute the horse race and determine winner"""
+    hr = HorseRacing()
+    result = hr.run_race()
+    return jsonify(result)
+
+@app.route('/horse-racing/race-status')
+@login_required
+def horse_race_status():
+    """Get current race status"""
+    hr = HorseRacing()
+    result = hr.get_race_status(current_user.user_id)
+    return jsonify(result)
+
+@app.route('/horse-racing/betting-stats')
+@login_required
+def horse_betting_stats():
+    """Get betting statistics for current race"""
+    hr = HorseRacing()
+    result = hr.get_betting_stats()
+    return jsonify(result)
+
+@app.route('/horse-racing/horse-info')
+@login_required
+def horse_info():
+    """Get horse information"""
+    hr = HorseRacing()
+    result = hr.get_horse_info()
+    return jsonify(result)
 
 if __name__ == '__main__':
     with app.app_context():

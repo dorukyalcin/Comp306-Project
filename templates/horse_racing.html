@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}Horse Racing - Sarcastic Casino{% endblock %}
+
+{% block content %}
+<style>
+    .horse-track {
+        background: linear-gradient(90deg, #2d5016 0%, #4a7c59 50%, #2d5016 100%);
+        border: 3px solid #8B4513;
+        border-radius: 10px;
+        min-height: 400px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .horse-lane {
+        border-bottom: 2px dashed #fff;
+        height: 60px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+    }
+    
+    .horse-lane:last-child {
+        border-bottom: none;
+    }
+    
+    .horse {
+        font-size: 30px;
+        transition: transform 0.5s ease;
+        position: absolute;
+        left: 20px;
+    }
+    
+    .horse.running {
+        animation: gallop 2s infinite;
+    }
+    
+    @keyframes gallop {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+    }
+    
+    .finish-line {
+        position: absolute;
+        right: 20px;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: repeating-linear-gradient(
+            0deg,
+            #fff 0px,
+            #fff 10px,
+            #000 10px,
+            #000 20px
+        );
+    }
+    
+    .betting-panel {
+        background: #1a1a1a;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .horse-card {
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .horse-card:hover {
+        border-color: #007bff;
+        transform: translateY(-2px);
+    }
+    
+    .horse-card.selected {
+        border-color: #28a745;
+        background: #1a3a1a;
+    }
+    
+    .race-status {
+        background: #dc3545;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .race-status.betting {
+        background: #28a745;
+    }
+    
+    .race-status.running {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    .recent-results {
+        background: #1a1a1a;
+        border-radius: 10px;
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Left Column - Race Track -->
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>🐎 Horse Racing</h2>
+                <div class="d-flex gap-2">
+                    <div class="race-status" id="raceStatus">
+                        No Active Race
+                    </div>
+                    <button class="btn btn-success" id="startRaceBtn" onclick="startNewRace()">
+                        Start New Race
+                    </button>
+                </div>
+            </div>
+            
+            <div class="horse-track" id="horseTrack">
+                <div class="finish-line"></div>
+                
+                <!-- Horse Lanes -->
+                <div class="horse-lane">
+                    <span class="horse" id="horse1">🐴</span>
+                    <span class="ms-3 text-white"><strong>Horse #1</strong> - Lightning Bolt</span>
+                </div>
+                <div class="horse-lane">
+                    <span class="horse" id="horse2">🐎</span>
+                    <span class="ms-3 text-white"><strong>Horse #2</strong> - Thunder Strike</span>
+                </div>
+                <div class="horse-lane">
+                    <span class="horse" id="horse3">🏇</span>
+                    <span class="ms-3 text-white"><strong>Horse #3</strong> - Wind Runner</span>
+                </div>
+                <div class="horse-lane">
+                    <span class="horse" id="horse4">🐴</span>
+                    <span class="ms-3 text-white"><strong>Horse #4</strong> - Fire Dash</span>
+                </div>
+                <div class="horse-lane">
+                    <span class="horse" id="horse5">🐎</span>
+                    <span class="ms-3 text-white"><strong>Horse #5</strong> - Storm Chaser</span>
+                </div>
+                <div class="horse-lane">
+                    <span class="horse" id="horse6">🏇</span>
+                    <span class="ms-3 text-white"><strong>Horse #6</strong> - Star Galloper</span>
+                </div>
+            </div>
+            
+            <!-- Race Results -->
+            <div class="mt-3" id="raceResults" style="display: none;">
+                <div class="alert alert-success">
+                    <h5>🏆 Race Results</h5>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column - Betting Panel -->
+        <div class="col-md-4">
+            <!-- Wallet Info -->
+            <div class="betting-panel">
+                <h5>💰 Your Wallet</h5>
+                <p class="mb-0">Balance: <strong>${{ wallet.balance }}</strong></p>
+                <small class="text-muted">Currency: {{ wallet.currency }}</small>
+            </div>
+            
+            <!-- Betting Interface -->
+            <div class="betting-panel" id="bettingPanel">
+                <h5>🎯 Place Your Bet</h5>
+                <p class="text-muted">Select a horse and place your bet!</p>
+                
+                <!-- Horse Selection -->
+                <div class="mb-3">
+                    <label class="form-label">Choose Your Horse:</label>
+                    <div id="horseSelection">
+                        <div class="horse-card" data-horse="1" onclick="selectHorse(1)">
+                            <div class="d-flex justify-content-between">
+                                <span>🐴 Horse #1 - Lightning Bolt</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                        <div class="horse-card" data-horse="2" onclick="selectHorse(2)">
+                            <div class="d-flex justify-content-between">
+                                <span>🐎 Horse #2 - Thunder Strike</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                        <div class="horse-card" data-horse="3" onclick="selectHorse(3)">
+                            <div class="d-flex justify-content-between">
+                                <span>🏇 Horse #3 - Wind Runner</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                        <div class="horse-card" data-horse="4" onclick="selectHorse(4)">
+                            <div class="d-flex justify-content-between">
+                                <span>🐴 Horse #4 - Fire Dash</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                        <div class="horse-card" data-horse="5" onclick="selectHorse(5)">
+                            <div class="d-flex justify-content-between">
+                                <span>🐎 Horse #5 - Storm Chaser</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                        <div class="horse-card" data-horse="6" onclick="selectHorse(6)">
+                            <div class="d-flex justify-content-between">
+                                <span>🏇 Horse #6 - Star Galloper</span>
+                                <span class="badge bg-primary">Odds: 2.5x</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bet Amount -->
+                <div class="mb-3">
+                    <label for="betAmount" class="form-label">Bet Amount:</label>
+                    <input type="number" class="form-control" id="betAmount" 
+                           min="{{ game.min_bet }}" max="{{ game.max_bet }}" step="0.01"
+                           placeholder="Enter bet amount">
+                    <small class="text-muted">Min: ${{ game.min_bet }} | Max: ${{ game.max_bet }}</small>
+                </div>
+                
+                <!-- Place Bet Button -->
+                <button class="btn btn-primary w-100" id="placeBetBtn" onclick="placeBet()" disabled>
+                    Place Bet
+                </button>
+            </div>
+            
+            <!-- Current Bet Info -->
+            <div class="betting-panel" id="currentBetInfo" style="display: none;">
+                <h5>🎲 Your Current Bet</h5>
+                <div id="betDetails"></div>
+                <button class="btn btn-warning w-100 mt-2" onclick="runRace()">
+                    🏁 Start Race!
+                </button>
+            </div>
+            
+            <!-- Recent Results -->
+            <div class="recent-results">
+                <h5>📊 Recent Results</h5>
+                {% if recent_rounds %}
+                    {% for round in recent_rounds %}
+                        <div class="mb-2 p-2" style="background: #2a2a2a; border-radius: 5px;">
+                            <small class="text-muted">{{ round.ended_at.strftime('%m/%d %H:%M') }}</small>
+                            <div>
+                                🏆 Winner: Horse #{{ round.outcome.outcome_data.order[0] }}
+                                <span class="float-end">{{ round.bets|length }} bets</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No recent races.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedHorse = null;
+let currentRoundId = null;
+
+// Check race status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkRaceStatus();
+    setInterval(checkRaceStatus, 2000); // Check every 2 seconds
+});
+
+function selectHorse(horseNumber) {
+    // Remove previous selection
+    document.querySelectorAll('.horse-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Add selection to clicked horse
+    document.querySelector(`[data-horse="${horseNumber}"]`).classList.add('selected');
+    selectedHorse = horseNumber;
+    
+    // Enable place bet button if amount is also entered
+    updatePlaceBetButton();
+}
+
+function updatePlaceBetButton() {
+    const betAmount = document.getElementById('betAmount').value;
+    const placeBetBtn = document.getElementById('placeBetBtn');
+    
+    if (selectedHorse && betAmount && parseFloat(betAmount) > 0) {
+        placeBetBtn.disabled = false;
+    } else {
+        placeBetBtn.disabled = true;
+    }
+}
+
+// Update place bet button when bet amount changes
+document.getElementById('betAmount').addEventListener('input', updatePlaceBetButton);
+
+function startNewRace() {
+    fetch('/horse-racing/start-race', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentRoundId = data.round_id;
+            checkRaceStatus();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error starting race');
+    });
+}
+
+function placeBet() {
+    if (!selectedHorse) {
+        alert('Please select a horse first');
+        return;
+    }
+    
+    const betAmount = document.getElementById('betAmount').value;
+    if (!betAmount || parseFloat(betAmount) <= 0) {
+        alert('Please enter a valid bet amount');
+        return;
+    }
+    
+    fetch('/horse-racing/place-bet', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            horse: selectedHorse,
+            amount: parseFloat(betAmount),
+            bet_type: 'win'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Bet placed successfully!');
+            checkRaceStatus();
+            // Update wallet balance
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error placing bet');
+    });
+}
+
+function runRace() {
+    // Show running animation
+    document.querySelectorAll('.horse').forEach(horse => {
+        horse.classList.add('running');
+    });
+    
+    // Update status
+    document.getElementById('raceStatus').textContent = 'Race in Progress...';
+    document.getElementById('raceStatus').className = 'race-status running';
+    
+    // Animate horses
+    animateRace();
+    
+    // Run the race on server
+    setTimeout(() => {
+        fetch('/horse-racing/run-race', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                setTimeout(() => {
+                    showRaceResults(data);
+                    checkRaceStatus();
+                }, 3000);
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error running race');
+        });
+    }, 1000);
+}
+
+function animateRace() {
+    const horses = document.querySelectorAll('.horse');
+    const trackWidth = document.getElementById('horseTrack').offsetWidth - 100;
+    
+    horses.forEach((horse, index) => {
+        const randomSpeed = Math.random() * 2000 + 2000; // 2-4 seconds
+        const randomDelay = Math.random() * 500; // 0-0.5 second delay
+        
+        setTimeout(() => {
+            horse.style.transform = `translateX(${trackWidth}px)`;
+            horse.style.transition = `transform ${randomSpeed}ms ease-out`;
+        }, randomDelay);
+    });
+}
+
+function showRaceResults(data) {
+    const resultsDiv = document.getElementById('raceResults');
+    const resultsContent = document.getElementById('resultsContent');
+    
+    let resultsHTML = `<strong>🏆 Winner: Horse #${data.winner}</strong><br>`;
+    resultsHTML += '<strong>Final Order:</strong><br>';
+    
+    data.order.forEach((horse, index) => {
+        const position = index + 1;
+        const emoji = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+        resultsHTML += `${emoji} Horse #${horse}<br>`;
+    });
+    
+    resultsContent.innerHTML = resultsHTML;
+    resultsDiv.style.display = 'block';
+    
+    // Reset horses position after showing results
+    setTimeout(() => {
+        document.querySelectorAll('.horse').forEach(horse => {
+            horse.style.transform = 'translateX(0)';
+            horse.style.transition = 'transform 0.5s ease';
+            horse.classList.remove('running');
+        });
+    }, 2000);
+}
+
+function checkRaceStatus() {
+    fetch('/horse-racing/race-status')
+    .then(response => response.json())
+    .then(data => {
+        const raceStatus = document.getElementById('raceStatus');
+        const startRaceBtn = document.getElementById('startRaceBtn');
+        const bettingPanel = document.getElementById('bettingPanel');
+        const currentBetInfo = document.getElementById('currentBetInfo');
+        const betDetails = document.getElementById('betDetails');
+        
+        if (data.active) {
+            currentRoundId = data.round_id;
+            startRaceBtn.style.display = 'none';
+            
+            if (data.user_has_bet) {
+                // User has bet, show race controls
+                raceStatus.textContent = `Betting Closed - ${data.bet_count} bets placed`;
+                raceStatus.className = 'race-status betting';
+                bettingPanel.style.display = 'none';
+                currentBetInfo.style.display = 'block';
+                
+                betDetails.innerHTML = `
+                    <p><strong>Your Bet:</strong> Horse #${data.user_bet.horse}</p>
+                    <p><strong>Amount:</strong> $${data.user_bet.amount}</p>
+                    <p><strong>Potential Win:</strong> $${(data.user_bet.amount * 2.5).toFixed(2)}</p>
+                `;
+            } else {
+                // User can still bet
+                raceStatus.textContent = `Betting Open - ${data.bet_count} bets placed`;
+                raceStatus.className = 'race-status betting';
+                bettingPanel.style.display = 'block';
+                currentBetInfo.style.display = 'none';
+            }
+        } else {
+            // No active race
+            raceStatus.textContent = 'No Active Race';
+            raceStatus.className = 'race-status';
+            startRaceBtn.style.display = 'block';
+            bettingPanel.style.display = 'none';
+            currentBetInfo.style.display = 'none';
+            
+            // Hide race results after a delay
+            setTimeout(() => {
+                document.getElementById('raceResults').style.display = 'none';
+            }, 10000);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking race status:', error);
+    });
+}
+</script>
+{% endblock %} 
