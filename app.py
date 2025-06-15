@@ -7,7 +7,7 @@ from functools import wraps
 from models import db, User, Wallet, Transaction, Game, Round, Bet, Outcome, Horse, HorseRunner, HorseResult
 from decimal import Decimal
 from werkzeug.utils import secure_filename
-from games import HorseRacing
+from games import HorseRacing, Slots, Plinko, Blackjack
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/casino_db')
@@ -326,6 +326,200 @@ def horse_info():
     hr = HorseRacing()
     result = hr.get_horse_info()
     return jsonify(result)
+
+@app.route('/slots')
+@login_required
+def slots():
+    """Main slot machine game page"""
+    slots_game = Slots()
+    
+    # Validate game setup
+    validation = slots_game.validate_game_setup()
+    if not validation['valid']:
+        flash(validation['message'], 'danger')
+        return redirect(url_for('index'))
+    
+    # Get user's primary wallet (any currency)
+    wallet = current_user.wallets[0] if current_user.wallets else None
+    if not wallet:
+        flash('No wallet found. Please contact support.', 'danger')
+        return redirect(url_for('index'))
+    
+    # Get game data
+    game = slots_game.get_game()
+    active_round = slots_game.get_active_round()
+    symbols = slots_game.get_all_symbols()
+    
+    return render_template('slots.html', 
+                         game=game, 
+                         wallet=wallet,
+                         active_round=active_round,
+                         symbols=symbols)
+
+@app.route('/api/slots/bet', methods=['POST'])
+@login_required
+def slots_bet():
+    """Handle slot machine bet"""
+    try:
+        data = request.get_json()
+        bet_amount = Decimal(str(data.get('amount', 0)))
+        
+        if bet_amount <= 0:
+            return jsonify({'success': False, 'message': 'Invalid bet amount'})
+        
+        slots_game = Slots()
+        result = slots_game.place_bet(current_user.user_id, bet_amount)
+        
+        if result['success']:
+            # Update wallet balance in response - use primary wallet
+            wallet = current_user.wallets[0] if current_user.wallets else None
+            if wallet:
+                result['wallet_balance'] = float(wallet.balance)
+                result['wallet_currency'] = wallet.currency
+            else:
+                result['wallet_balance'] = 0.0
+                result['wallet_currency'] = 'USD'
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/plinko')
+@login_required
+def plinko():
+    """Plinko game page"""
+    try:
+        from games.plinko import Plinko
+        
+        plinko_game = Plinko()
+        
+        # Get default board data (high risk)
+        board_data = plinko_game.get_board_data('high')
+        
+        # Get user's primary wallet
+        wallet = current_user.wallets[0] if current_user.wallets else None
+        if not wallet:
+            flash('No wallet found. Please contact support.', 'error')
+            return redirect(url_for('index'))
+        
+        return render_template('plinko.html', 
+                             board_data=board_data, 
+                             wallet=wallet)
+        
+    except Exception as e:
+        flash(f'Error loading Plinko: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/api/plinko/bet', methods=['POST'])
+@login_required 
+def api_plinko_bet():
+    """Place a Plinko bet"""
+    try:
+        from games.plinko import Plinko
+        
+        data = request.get_json()
+        bet_amount = float(data.get('amount', 0))
+        risk_level = data.get('risk_level', 'high')
+        
+        if bet_amount <= 0:
+            return jsonify({'success': False, 'message': 'Invalid bet amount'})
+        
+        plinko = Plinko()
+        result = plinko.place_bet(current_user.user_id, bet_amount, risk_level)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/plinko/board-data')
+@login_required
+def api_plinko_board_data():
+    """Get board data for a specific risk level"""
+    try:
+        from games.plinko import Plinko
+        
+        risk_level = request.args.get('risk', 'high')
+        plinko = Plinko()
+        board_data = plinko.get_board_data(risk_level)
+        
+        return jsonify({
+            'success': True,
+            'board_data': board_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/blackjack')
+@login_required
+def blackjack():
+    """Blackjack game page"""
+    try:
+        from games.blackjack import Blackjack
+        
+        blackjack_game = Blackjack()
+        
+        # Get user's primary wallet
+        wallet = current_user.wallets[0] if current_user.wallets else None
+        if not wallet:
+            flash('No wallet found. Please contact support.', 'error')
+            return redirect(url_for('index'))
+        
+        # Get game statistics
+        statistics = blackjack_game.get_statistics()
+        
+        return render_template('blackjack.html', 
+                             wallet=wallet,
+                             statistics=statistics)
+        
+    except Exception as e:
+        flash(f'Error loading Blackjack: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/api/blackjack/bet', methods=['POST'])
+@login_required 
+def api_blackjack_bet():
+    """Place a Blackjack bet and deal initial cards"""
+    try:
+        from games.blackjack import Blackjack
+        
+        data = request.get_json()
+        bet_amount = float(data.get('amount', 0))
+        
+        if bet_amount <= 0:
+            return jsonify({'success': False, 'message': 'Invalid bet amount'})
+        
+        blackjack = Blackjack()
+        result = blackjack.place_bet(current_user.user_id, bet_amount)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/blackjack/action', methods=['POST'])
+@login_required
+def api_blackjack_action():
+    """Handle player action (hit, stand, double)"""
+    try:
+        from games.blackjack import Blackjack
+        
+        data = request.get_json()
+        bet_id = data.get('bet_id')
+        action = data.get('action')
+        
+        if not bet_id or not action:
+            return jsonify({'success': False, 'message': 'Missing bet_id or action'})
+        
+        blackjack = Blackjack()
+        result = blackjack.player_action(bet_id, action)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 if __name__ == '__main__':
     with app.app_context():
