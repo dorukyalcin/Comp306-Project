@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Slots - Sarcastic Casino{% endblock %}
+
+{% block content %}
+<div class="container-fluid casino-bg">
+    <div class="row justify-content-center">
+        <div class="col-xl-10 col-lg-12">
+            <!-- Main Slot Machine Container -->
+            <div class="slot-machine-container">
+                <div class="machine-header">
+                    <h1 class="casino-title">
+                        <span class="neon-text">🎰 SARCASTIC SLOTS 🎰</span>
+                    </h1>
+                    <div class="jackpot-display">
+                        <span class="jackpot-label">JACKPOT</span>
+                        <span class="jackpot-amount">$50,000</span>
+                    </div>
+                </div>
+
+                <!-- Slot Machine Body -->
+                <div class="slot-machine-body">
+                    <!-- Reels Container -->
+                    <div class="reels-container">
+                        <div class="reels-frame">
+                            <div class="reel-window" id="reel1">
+                                <div class="symbol-strip">
+                                    <img src="{{ url_for('static', filename='images/slots/seven.png') }}" alt="?" class="symbol-image active">
+                                    <img src="{{ url_for('static', filename='images/slots/cherry.png') }}" alt="?" class="symbol-image">
+                                    <img src="{{ url_for('static', filename='images/slots/lemon.png') }}" alt="?" class="symbol-image">
+                                </div>
+                            </div>
+                            <div class="reel-window" id="reel2">
+                                <div class="symbol-strip">
+                                    <img src="{{ url_for('static', filename='images/slots/seven.png') }}" alt="?" class="symbol-image active">
+                                    <img src="{{ url_for('static', filename='images/slots/grape.png') }}" alt="?" class="symbol-image">
+                                    <img src="{{ url_for('static', filename='images/slots/diamond.png') }}" alt="?" class="symbol-image">
+                                </div>
+                            </div>
+                            <div class="reel-window" id="reel3">
+                                <div class="symbol-strip">
+                                    <img src="{{ url_for('static', filename='images/slots/seven.png') }}" alt="?" class="symbol-image active">
+                                    <img src="{{ url_for('static', filename='images/slots/orange.png') }}" alt="?" class="symbol-image">
+                                    <img src="{{ url_for('static', filename='images/slots/cherry.png') }}" alt="?" class="symbol-image">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Payline Indicator -->
+                        <div class="payline-indicator"></div>
+                    </div>
+
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <div class="bet-controls">
+                            <div class="bet-section">
+                                <label class="control-label">BET AMOUNT</label>
+                                <div class="bet-input-group">
+                                    <button class="bet-btn minus-btn" id="decreaseBet">-</button>
+                                    <input type="number" id="betAmount" class="bet-input" 
+                                           min="0" step="100" value="100.00">
+                                    <button class="bet-btn plus-btn" id="increaseBet">+</button>
+                                </div>
+                                <div class="bet-limits">
+                                    No limits - bet what you can afford!
+                                </div>
+                            </div>
+                            
+                            <div class="spin-section">
+                                <button id="spinButton" class="spin-button">
+                                    <span class="spin-text">SPIN</span>
+                                    <div class="spin-glow"></div>
+                                </button>
+                            </div>
+                            
+                            <div class="balance-section">
+                                <label class="control-label">BALANCE</label>
+                                <div class="balance-display">
+                                    {% if current_user.wallets %}
+                                        ${{ current_user.wallets[0].balance|round(2) }}
+                                    {% else %}
+                                        $0.00
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Display -->
+                <div id="resultDisplay" class="result-panel" style="display: none;">
+                    <div class="result-content">
+                        <h3 id="resultTitle" class="result-title"></h3>
+                        <p id="resultMessage" class="result-message"></p>
+                        <div id="winAmount" class="win-amount"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paytable -->
+            <div class="paytable-container">
+                <h3 class="paytable-title">PAYTABLE</h3>
+                <div class="paytable-grid">
+                    <div class="paytable-section">
+                        <h4 class="section-title">THREE OF A KIND</h4>
+                        {% for symbol_key, symbol_data in symbols.items() %}
+                        <div class="payout-row">
+                            <div class="symbol-combo">
+                                <img src="{{ url_for('static', filename='images/slots/' + symbol_data.image) }}" class="mini-symbol">
+                                <img src="{{ url_for('static', filename='images/slots/' + symbol_data.image) }}" class="mini-symbol">
+                                <img src="{{ url_for('static', filename='images/slots/' + symbol_data.image) }}" class="mini-symbol">
+                            </div>
+                            <div class="payout-value">{{ symbol_data.payout }}x</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="paytable-section">
+                        <h4 class="section-title">TWO OF A KIND</h4>
+                        {% for symbol_key, symbol_data in symbols.items() %}
+                        <div class="payout-row">
+                            <div class="symbol-combo">
+                                <img src="{{ url_for('static', filename='images/slots/' + symbol_data.image) }}" class="mini-symbol">
+                                <img src="{{ url_for('static', filename='images/slots/' + symbol_data.image) }}" class="mini-symbol">
+                            </div>
+                            <div class="payout-value">{{ (symbol_data.payout / 2) }}x</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Casino Background */
+.casino-bg {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+/* Main Slot Machine Container */
+.slot-machine-container {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: 
+        0 20px 40px rgba(0,0,0,0.5),
+        inset 0 2px 10px rgba(255,255,255,0.1);
+    border: 3px solid #f39c12;
+}
+
+.machine-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.casino-title {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    text-shadow: 0 0 20px #f39c12;
+}
+
+.neon-text {
+    color: #f39c12;
+    text-shadow: 
+        0 0 10px #f39c12,
+        0 0 20px #f39c12,
+        0 0 40px #f39c12;
+    animation: neonGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes neonGlow {
+    from { text-shadow: 0 0 10px #f39c12, 0 0 20px #f39c12, 0 0 40px #f39c12; }
+    to { text-shadow: 0 0 20px #f39c12, 0 0 30px #f39c12, 0 0 60px #f39c12; }
+}
+
+.jackpot-display {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    padding: 10px 20px;
+    border-radius: 15px;
+    display: inline-block;
+    margin-top: 10px;
+    box-shadow: 0 5px 15px rgba(231,76,60,0.3);
+}
+
+.jackpot-label {
+    color: white;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.jackpot-amount {
+    color: #f1c40f;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-left: 10px;
+    text-shadow: 0 0 10px #f1c40f;
+}
+
+/* Slot Machine Body */
+.slot-machine-body {
+    background: linear-gradient(145deg, #34495e, #2c3e50);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+/* Reels Container */
+.reels-container {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.reels-frame {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(145deg, #1a1a1a, #2c2c2c);
+    padding: 25px;
+    border-radius: 15px;
+    border: 4px solid #f39c12;
+    box-shadow: 
+        inset 0 5px 15px rgba(0,0,0,0.7),
+        0 10px 25px rgba(0,0,0,0.5);
+}
+
+.reel-window {
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(to bottom, #1a1a1a, #000);
+    border: 3px solid #666;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.8);
+}
+
+.symbol-strip {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.symbol-image {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+}
+
+.symbol-image.active {
+    opacity: 1;
+}
+
+/* Spinning Animation */
+.reel-window.spinning .symbol-image {
+    animation: symbolSpin 0.1s linear infinite;
+}
+
+@keyframes symbolSpin {
+    0% { transform: translateY(-150px); opacity: 0; }
+    50% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(150px); opacity: 0; }
+}
+
+/* Payline Indicator */
+.payline-indicator {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #e74c3c, transparent);
+    transform: translateY(-50%);
+    box-shadow: 0 0 10px #e74c3c;
+    opacity: 0.8;
+}
+
+/* Control Panel */
+.control-panel {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid #3498db;
+}
+
+.bet-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.bet-section, .balance-section {
+    text-align: center;
+}
+
+.control-label {
+    display: block;
+    color: #ecf0f1;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.bet-input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #1a1a1a;
+    border-radius: 25px;
+    padding: 5px;
+}
+
+.bet-btn {
+    width: 35px;
+    height: 35px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #3498db, #2980b9);
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.bet-btn:hover {
+    background: linear-gradient(145deg, #2980b9, #3498db);
+    transform: scale(1.1);
+}
+
+.bet-input {
+    width: 100px;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: #f1c40f;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.bet-limits {
+    color: #bdc3c7;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.balance-display {
+    color: #2ecc71;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px #2ecc71;
+}
+
+/* Spin Button */
+.spin-section {
+    position: relative;
+}
+
+.spin-button {
+    width: 120px;
+    height: 120px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 
+        0 10px 20px rgba(231,76,60,0.3),
+        inset 0 2px 5px rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+}
+
+.spin-button:hover {
+    transform: scale(1.05);
+    box-shadow: 
+        0 15px 30px rgba(231,76,60,0.5),
+        inset 0 2px 5px rgba(255,255,255,0.3);
+}
+
+.spin-button:active {
+    transform: scale(0.95);
+}
+
+.spin-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.spin-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.spin-button:hover .spin-glow {
+    opacity: 1;
+}
+
+/* Result Panel */
+.result-panel {
+    background: linear-gradient(145deg, #27ae60, #2ecc71);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(39,174,96,0.3);
+}
+
+.result-panel.error {
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+}
+
+.result-title {
+    font-size: 2rem;
+    margin: 0 0 10px 0;
+    color: white;
+}
+
+.result-message {
+    font-size: 1.2rem;
+    margin: 0 0 10px 0;
+    color: rgba(255,255,255,0.9);
+}
+
+.win-amount {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #f1c40f;
+    text-shadow: 0 0 15px #f1c40f;
+}
+
+/* Paytable */
+.paytable-container {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-radius: 20px;
+    padding: 25px;
+    margin-top: 30px;
+    border: 2px solid #95a5a6;
+}
+
+.paytable-title {
+    text-align: center;
+    color: #f39c12;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #f39c12;
+}
+
+.paytable-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.section-title {
+    color: #3498db;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.payout-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(52,73,94,0.3);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.symbol-combo {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mini-symbol {
+    width: 25px;
+    height: 25px;
+    object-fit: contain;
+}
+
+.any-symbol {
+    width: 25px;
+    height: 25px;
+    background: #95a5a6;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: white;
+}
+
+.payout-value {
+    color: #f1c40f;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .casino-title { font-size: 2rem; }
+    .reels-frame { padding: 15px; gap: 5px; }
+    .reel-window { width: 100px; height: 100px; }
+    .symbol-image { width: 70px; height: 70px; }
+    .bet-controls { flex-direction: column; gap: 15px; }
+    .paytable-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const spinButton = document.getElementById('spinButton');
+    const betAmount = document.getElementById('betAmount');
+    const increaseBet = document.getElementById('increaseBet');
+    const decreaseBet = document.getElementById('decreaseBet');
+    const resultDisplay = document.getElementById('resultDisplay');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultMessage = document.getElementById('resultMessage');
+    const winAmount = document.getElementById('winAmount');
+    
+    const reels = [
+        document.getElementById('reel1'),
+        document.getElementById('reel2'),
+        document.getElementById('reel3')
+    ];
+
+    // Symbol images for spinning animation
+    const symbolImages = [
+        'seven.png', 'cherry.png', 'lemon.png', 'orange.png', 
+        'grape.png', 'diamond.png'
+    ];
+
+         // Bet controls
+     increaseBet.addEventListener('click', () => {
+         const current = parseFloat(betAmount.value);
+         betAmount.value = (current + 100).toFixed(2);
+     });
+
+     decreaseBet.addEventListener('click', () => {
+         const current = parseFloat(betAmount.value);
+         const min = parseFloat(betAmount.min);
+         if (current > min) {
+             betAmount.value = Math.max(min, current - 100).toFixed(2);
+         }
+     });
+
+         // Spinning animation function
+     function animateReelSpin(reel, duration) {
+         return new Promise((resolve) => {
+             reel.classList.add('spinning');
+             const symbolStrip = reel.querySelector('.symbol-strip');
+             const currentImage = symbolStrip.querySelector('.symbol-image.active');
+             
+             let spinCount = 0;
+             const maxSpins = Math.floor(duration / 100);
+             
+             const spinInterval = setInterval(() => {
+                 // Randomly show different symbols during spin
+                 const randomSymbol = symbolImages[Math.floor(Math.random() * symbolImages.length)];
+                 currentImage.src = `/static/images/slots/${randomSymbol}`;
+                 
+                 spinCount++;
+                 if (spinCount >= maxSpins) {
+                     clearInterval(spinInterval);
+                     
+                     // DON'T set a placeholder image - wait for API response
+                     reel.classList.remove('spinning');
+                     
+                     setTimeout(resolve, 200);
+                 }
+             }, 100);
+         });
+     }
+
+    // Spin button click handler
+    spinButton.addEventListener('click', async function() {
+        const amount = parseFloat(betAmount.value);
+        if (!amount || amount <= 0) {
+            alert('Please enter a valid bet amount');
+            return;
+        }
+
+        // Disable spin button during spin
+        spinButton.disabled = true;
+        spinButton.querySelector('.spin-text').textContent = 'SPINNING...';
+        resultDisplay.style.display = 'none';
+
+                 try {
+             // Start spinning animation for all reels with different durations
+             const spinPromises = reels.map((reel, index) => 
+                 animateReelSpin(reel, 1000 + (index * 300))
+             );
+
+             // Make API call concurrently with spinning
+             const apiPromise = fetch('/api/slots/bet', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 },
+                 body: JSON.stringify({ amount: amount })
+             }).then(response => response.json());
+
+             // Wait for both spinning and API to complete
+             const [data] = await Promise.all([apiPromise, Promise.all(spinPromises)]);
+
+             // Update reels with actual results immediately after spinning stops
+             reels.forEach((reel, index) => {
+                 const currentImage = reel.querySelector('.symbol-image.active');
+                 if (data.reel_images && data.reel_images[index]) {
+                     currentImage.src = `/static/images/slots/${data.reel_images[index]}`;
+                     currentImage.alt = data.reel_names ? data.reel_names[index] : data.reels[index];
+                 }
+             });
+
+            // Show results with animation
+            setTimeout(() => {
+                resultDisplay.style.display = 'block';
+                if (data.success) {
+                    if (data.win_amount > 0) {
+                        resultDisplay.className = 'result-panel';
+                        resultTitle.textContent = '🎉 WINNER! 🎉';
+                        resultMessage.textContent = `You got ${data.reel_names ? data.reel_names.join(' + ') : data.reels.join(' + ')}`;
+                        
+                        // Show currency-appropriate symbol
+                        const currency = data.wallet_currency || 'USD';
+                        const symbol = currency === 'EUR' ? '€' : currency === 'BTC' ? '₿' : '$';
+                        winAmount.textContent = `+${symbol}${data.win_amount.toFixed(2)}`;
+                        
+                        // Add celebration effect
+                        resultDisplay.style.animation = 'pulse 0.5s ease-in-out 3';
+                    } else {
+                        resultDisplay.className = 'result-panel error';
+                        resultTitle.textContent = '💸 NO WIN';
+                        resultMessage.textContent = `You got ${data.reel_names ? data.reel_names.join(' + ') : data.reels.join(' + ')}`;
+                        winAmount.textContent = 'Better luck next time!';
+                    }
+                } else {
+                    resultDisplay.className = 'result-panel error';
+                    resultTitle.textContent = '❌ ERROR';
+                    resultMessage.textContent = data.message;
+                    winAmount.textContent = '';
+                }
+
+                // Update wallet balance in navbar
+                if (data.wallet_balance !== undefined) {
+                    const walletDisplay = document.querySelector('.nav-link i.fa-coins + span');
+                    if (walletDisplay) {
+                        const currency = data.wallet_currency || 'USD';
+                        const symbol = currency === 'EUR' ? '€' : currency === 'BTC' ? '₿' : '$';
+                        walletDisplay.textContent = `${symbol}${data.wallet_balance.toFixed(2)} ${currency}`;
+                    }
+                }
+            }, 500);
+
+        } catch (error) {
+            console.error('Error:', error);
+            resultDisplay.style.display = 'block';
+            resultDisplay.className = 'result-panel error';
+            resultTitle.textContent = '❌ ERROR';
+            resultMessage.textContent = 'An error occurred while processing your bet';
+            winAmount.textContent = '';
+        } finally {
+            // Re-enable spin button
+            spinButton.disabled = false;
+            spinButton.querySelector('.spin-text').textContent = 'SPIN';
+        }
+    });
+});
+
+// Add pulse animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %} 
