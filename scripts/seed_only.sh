@@ -39,6 +39,11 @@ echo "🌱 Running comprehensive seeding with positive balances..."
 docker-compose exec web python seeding/comprehensive_seed.py
 
 echo ""
+echo "🐎 Setting up horse racing data..."
+docker-compose exec web python seeding/seed_horses.py
+docker-compose exec web python seeding/seed_horse_races.py
+
+echo ""
 echo "🔍 Verifying wallet balances..."
 docker-compose exec web python -c "import sys; sys.path.insert(0, '/app'); from app import app, db; from models import *; app.app_context().push(); total_wallets = Wallet.query.count(); negative_wallets = Wallet.query.filter(Wallet.balance < 0).count(); print(f'💰 Total wallets: {total_wallets}'); print(f'✅ ALL WALLETS HAVE POSITIVE BALANCES!' if negative_wallets == 0 else f'⚠️ WARNING: {negative_wallets} wallets have negative balances')"
 

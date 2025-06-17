@@ -228,4 +228,60 @@ After running comprehensive seeding:
 - **Gaming Activity:** Realistic betting patterns and history
 - **System Features:** Complete sarcasm and settings system
 
-All scripts are designed to work together seamlessly and provide a realistic testing environment for the sarcastic gambling site. 
+All scripts are designed to work together seamlessly and provide a realistic testing environment for the sarcastic gambling site.
+
+## Available Scripts
+
+### Core Seeding
+- `init_db.py` - Initialize database tables
+- `seed_games.py` - Seed basic game catalog
+- `comprehensive_seed.py` - Run full seeding process
+- `startup_with_seed.py` - Combined startup and seeding
+
+### Horse Racing Data
+- `seed_horses.py` - Create horse catalog
+- `seed_horse_races.py` - Generate race data and bets
+
+### Utilities
+- `clean_seed.py` - Reset and reseed database
+- `view_db.py` - View current database contents
+- `fix_missing_wallets.py` - Fix wallet issues
+
+## Usage
+
+### Basic Seeding
+```bash
+# Initialize database
+python init_db.py
+
+# Seed games
+python seed_games.py
+
+# Full seeding
+python comprehensive_seed.py
+```
+
+### Horse Racing Setup
+```bash
+# First seed horses
+python seed_horses.py
+
+# Then generate race data
+python seed_horse_races.py
+```
+
+### Utilities
+```bash
+# View database contents
+python view_db.py
+
+# Clean and reseed
+python clean_seed.py
+```
+
+## Notes
+
+- Run scripts from project root directory
+- Scripts require database connection
+- Some scripts depend on others being run first
+- See SEEDING_DOCUMENTATION.md for details 

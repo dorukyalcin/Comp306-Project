@@ -947,11 +947,90 @@ def admin_analytics():
         result = db.session.execute(text(game_revenue_sql))
         analytics_results['game_revenue'] = [dict(row._mapping) for row in result]
         
+        # Query 3: Horse Racing Analytics
+        horse_racing_sql = """
+        SELECT 
+            h.name,
+            h.age,
+            h.temperament,
+            COUNT(hr.round_id) as races_run,
+            COUNT(CASE WHEN hr.finish_place = 1 THEN 1 END) as wins,
+            COUNT(CASE WHEN hr.finish_place <= 3 THEN 1 END) as top3_finishes,
+            ROUND(AVG(hr.finish_place)::NUMERIC, 2) as avg_finish_position,
+            ROUND(MIN(hr.race_time_sec)::NUMERIC, 2) as best_time,
+            ROUND(AVG(hr.race_time_sec)::NUMERIC, 2) as avg_time,
+            CASE 
+                WHEN COUNT(hr.round_id) > 0 THEN 
+                    ROUND((COUNT(CASE WHEN hr.finish_place = 1 THEN 1 END)::NUMERIC / COUNT(hr.round_id) * 100), 1)
+                ELSE 0 
+            END as win_percentage,
+            CASE 
+                WHEN COUNT(hr.round_id) > 0 THEN 
+                    ROUND((COUNT(CASE WHEN hr.finish_place <= 3 THEN 1 END)::NUMERIC / COUNT(hr.round_id) * 100), 1)
+                ELSE 0 
+            END as top3_percentage
+        FROM horses h
+        LEFT JOIN horse_results hr ON h.horse_id = hr.horse_id
+        GROUP BY h.horse_id, h.name, h.age, h.temperament
+        HAVING COUNT(hr.round_id) > 0
+        ORDER BY COUNT(CASE WHEN hr.finish_place = 1 THEN 1 END) DESC, AVG(hr.finish_place) ASC;
+        """
+        
+        try:
+            print("Executing horse racing query...")  # Debug print
+            result = db.session.execute(text(horse_racing_sql))
+            print("Query executed successfully")  # Debug print
+            rows = result.fetchall()
+            print(f"Found {len(rows)} horses")  # Debug print
+            analytics_results['horse_racing'] = [dict(row._mapping) for row in rows]
+            print("Horse racing data:", analytics_results['horse_racing'])  # Debug print
+        except Exception as e:
+            print("Error in horse racing query:", str(e))  # Debug print
+            analytics_results['horse_racing'] = []
+        
         return render_template('admin/analytics.html', analytics=analytics_results)
         
     except Exception as e:
+        print("Analytics Error:", str(e))  # Debug: Print any errors
         flash(f'Error running analytics: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
+
+# Debug route for horse racing query
+@app.route('/admin/debug/horse-racing')
+@login_required
+@admin_required
+def debug_horse_racing():
+    try:
+        # Basic query to check horse data
+        basic_query = """
+        SELECT h.horse_id, h.name, COUNT(hr.round_id) as races
+        FROM horses h
+        LEFT JOIN horse_results hr ON h.horse_id = hr.horse_id
+        GROUP BY h.horse_id, h.name
+        ORDER BY h.horse_id;
+        """
+        result = db.session.execute(text(basic_query))
+        horses = [dict(row._mapping) for row in result]
+        
+        # Check bet data
+        bet_query = """
+        SELECT b.bet_id, b.choice_data, b.amount, b.payout_amount
+        FROM bets b
+        WHERE b.choice_data->>'horse_id' IS NOT NULL
+        LIMIT 5;
+        """
+        result = db.session.execute(text(bet_query))
+        bets = [dict(row._mapping) for row in result]
+        
+        return jsonify({
+            'horses': horses,
+            'bets': bets,
+            'message': 'Debug data retrieved successfully'
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     with app.app_context():

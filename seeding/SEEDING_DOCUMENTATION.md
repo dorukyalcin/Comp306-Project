@@ -10,6 +10,8 @@ I've implemented a complete database seeding system that meets all 4 requirement
 - **`comprehensive_seed.py`** - Main seeding script with all 4 requirements
 - **`startup_with_seed.py`** - Enhanced startup script for Docker
 - **`seed_games.py`** - Original games catalog seeding (enhanced)
+- **`seed_horses.py`** - Horse catalog with diverse characteristics
+- **`seed_horse_races.py`** - Realistic horse racing data generator
 
 ## 📊 REQUIREMENT 1: Users & Authentication
 
@@ -228,3 +230,15 @@ The seeding system includes comprehensive validation:
 4. **User Experience:** Sarcasm levels match assigned templates
 
 This implementation provides a complete, realistic dataset for testing all aspects of your sarcastic gambling site, from user authentication to complex gaming interactions with financial transactions. 
+
+### Horse Racing Seeder Features:
+- **24 Unique Horses** with varied:
+  - Ages (2-13 years)
+  - Base speeds (6.5-9.2)
+  - Temperaments (calm, confident, aggressive, nervous, unpredictable)
+- **50 Race Rounds** with:
+  - 6 horses per race
+  - Realistic odds calculation based on horse characteristics
+  - Performance-based race times and results
+  - ~20 bets per race from random users
+  - Betting patterns favoring race favorites 

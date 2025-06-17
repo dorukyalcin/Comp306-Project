@@ -41,6 +41,11 @@ echo "🎮 Setting up casino games..."
 docker-compose exec web python seeding/seed_games.py
 
 echo ""
+echo "🐎 Setting up horse racing data..."
+docker-compose exec web python seeding/seed_horses.py
+docker-compose exec web python seeding/seed_horse_races.py
+
+echo ""
 echo "🔍 Verifying positive wallet balances..."
 docker-compose exec web python seeding/view_db.py
 
