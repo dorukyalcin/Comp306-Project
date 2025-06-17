@@ -13,30 +13,17 @@
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
             </div>
-            
-            <div class="alert alert-info">
-                <h5><i class="fas fa-graduation-cap"></i> Database Course Requirements</h5>
-                <p class="mb-0">This page demonstrates 5 sophisticated SQL queries meeting advanced database course standards, including:</p>
-                <ul class="mb-0 mt-2">
-                    <li><strong>Complex JOINs</strong> across multiple tables</li>
-                    <li><strong>Window Functions</strong> and ranking operations</li>
-                    <li><strong>Common Table Expressions (CTEs)</strong> for modular queries</li>
-                    <li><strong>Aggregate Functions</strong> with GROUP BY and HAVING clauses</li>
-                    <li><strong>Advanced Analytics</strong> including cohort analysis and business intelligence</li>
-                </ul>
-            </div>
         </div>
     </div>
 
-    <!-- Query 1: User Performance Analytics -->
+    <!-- User Performance Analytics -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card bg-dark border-warning">
                 <div class="card-header bg-warning text-dark">
                     <h4 class="mb-0">
-                        <i class="fas fa-trophy"></i> Query 1: User Performance Analytics with Rankings
+                        <i class="fas fa-trophy"></i> User Performance Analytics with Rankings
                     </h4>
-                    <small>Demonstrates: Complex JOINs, Window Functions, CTEs, Aggregate Functions</small>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -90,15 +77,14 @@
         </div>
     </div>
 
-    <!-- Query 2: Game Revenue Analysis -->
+    <!-- Game Revenue Analysis -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card bg-dark border-success">
                 <div class="card-header bg-success text-dark">
                     <h4 class="mb-0">
-                        <i class="fas fa-coins"></i> Query 2: Game Revenue and Performance Analysis
+                        <i class="fas fa-coins"></i> Game Revenue and Performance Analysis
                     </h4>
-                    <small>Demonstrates: Business Calculations, Performance Metrics, Revenue Analytics</small>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -140,15 +126,14 @@
         </div>
     </div>
 
-    <!-- Query 3: Horse Racing Analytics -->
+    <!-- Horse Racing Analytics -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card bg-dark border-primary">
                 <div class="card-header bg-primary text-dark">
                     <h4 class="mb-0">
-                        <i class="fas fa-horse"></i> Query 3: Horse Racing Performance Analytics
+                        <i class="fas fa-horse"></i> Horse Racing Performance Analytics
                     </h4>
-                    <small>Demonstrates: Complex JOINs, Statistical Calculations, Performance Metrics</small>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -192,15 +177,14 @@
         </div>
     </div>
 
-    <!-- Query 4: Transaction Pattern Analysis -->
+    <!-- Transaction Pattern Analysis -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card bg-dark border-secondary">
                 <div class="card-header bg-secondary text-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-chart-line"></i> Query 4: Transaction Pattern Analysis
+                        <i class="fas fa-chart-line"></i> Transaction Pattern Analysis
                     </h4>
-                    <small>Demonstrates: Financial Analytics, Window Functions, Date Calculations, Health Scoring</small>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -268,223 +252,6 @@
                     </div>
                     {% endif %}
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Query 5: Betting Behavior Cohort Analysis -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card bg-dark border-info">
-                <div class="card-header bg-info text-dark">
-                    <h4 class="mb-0">
-                        <i class="fas fa-brain"></i> Query 5: Betting Behavior Cohort Analysis
-                    </h4>
-                    <small>Demonstrates: Cohort Analysis, User Segmentation, Behavioral Profiling, Temporal Analytics</small>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-dark table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Cohort Month</th>
-                                    <th>Days to First Bet</th>
-                                    <th>Total Bets</th>
-                                    <th>Betting Days</th>
-                                    <th>Games Tried</th>
-                                    <th>Total Wagered</th>
-                                    <th>Avg Bet Size</th>
-                                    <th>Lifespan Days</th>
-                                    <th>Bets/Day</th>
-                                    <th>Player Segment</th>
-                                    <th>Stake Category</th>
-                                    <th>Value Rank</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user in analytics.betting_behavior %}
-                                <tr>
-                                    <td><strong>{{ user.username }}</strong></td>
-                                    <td>{{ user.cohort_month.strftime('%Y-%m') if user.cohort_month else 'N/A' }}</td>
-                                    <td class="{% if (user.days_to_first_bet or 0) <= 1 %}text-success{% elif (user.days_to_first_bet or 0) <= 7 %}text-warning{% else %}text-danger{% endif %}">
-                                        {{ user.days_to_first_bet or 'N/A' }}
-                                    </td>
-                                    <td>{{ user.total_bets }}</td>
-                                    <td>{{ user.betting_days }}</td>
-                                    <td>{{ user.games_tried }}</td>
-                                    <td class="text-success">${{ "%.2f"|format(user.total_wagered or 0) }}</td>
-                                    <td>${{ "%.2f"|format(user.avg_bet_size or 0) }}</td>
-                                    <td class="{% if (user.betting_lifespan_days or 0) >= 60 %}text-success{% elif (user.betting_lifespan_days or 0) >= 30 %}text-warning{% else %}text-danger{% endif %}">
-                                        {{ user.betting_lifespan_days or 'N/A' }}
-                                    </td>
-                                    <td>{{ "%.1f"|format(user.bets_per_active_day or 0) }}</td>
-                                    <td>
-                                        <span class="badge 
-                                            {% if user.player_segment == 'High Value Regular' %}bg-success
-                                            {% elif user.player_segment == 'Active Player' %}bg-primary
-                                            {% elif user.player_segment == 'Casual Player' %}bg-info
-                                            {% elif user.player_segment == 'Trial User' %}bg-warning text-dark
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ user.player_segment }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge 
-                                            {% if user.stake_category == 'High Roller' %}bg-danger
-                                            {% elif user.stake_category == 'Medium Stake' %}bg-warning text-dark
-                                            {% elif user.stake_category == 'Regular Stake' %}bg-info
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ user.stake_category }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if (user.value_rank or 999) <= 3 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                            #{{ user.value_rank or 'N/A' }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% if not analytics.betting_behavior %}
-                    <div class="alert alert-info">
-                        <p class="mb-0">No betting behavior data available. Users need to register and place bets to generate cohort analysis.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SQL Code Examples -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card bg-dark border-info">
-                <div class="card-header bg-info text-dark">
-                    <h4 class="mb-0">
-                        <i class="fas fa-code"></i> Sample Complex Query - User Performance Analytics
-                    </h4>
-                    <small>Advanced SQL with CTEs, Window Functions, and Complex Calculations</small>
-                </div>
-                <div class="card-body">
-                    <pre class="bg-black text-light p-3 rounded"><code>-- Query 1: User Performance Analytics with Rankings
-WITH user_betting_stats AS (
-    SELECT 
-        u.user_id, u.username, u.created_at,
-        COUNT(DISTINCT b.bet_id) as total_bets,
-        COALESCE(SUM(b.amount), 0) as total_wagered,
-        COALESCE(SUM(b.payout_amount), 0) as total_winnings,
-        COALESCE(SUM(b.payout_amount) - SUM(b.amount), 0) as net_profit,
-        COUNT(CASE WHEN b.payout_amount > b.amount THEN 1 END) as winning_bets,
-        AVG(b.amount) as avg_bet_size,
-        COUNT(DISTINCT g.code) as games_played,
-        COUNT(DISTINCT DATE(b.placed_at)) as active_days
-    FROM users u
-    LEFT JOIN bets b ON u.user_id = b.user_id
-    LEFT JOIN rounds r ON b.round_id = r.round_id  
-    LEFT JOIN games g ON r.game_id = g.game_id
-    WHERE u.is_admin = FALSE
-    GROUP BY u.user_id, u.username, u.created_at
-    HAVING COUNT(b.bet_id) > 0
-),
-user_rankings AS (
-    SELECT *,
-        CASE 
-            WHEN total_bets > 0 THEN ROUND((winning_bets::NUMERIC / total_bets) * 100, 2)
-            ELSE 0 
-        END as win_percentage,
-        CASE 
-            WHEN total_wagered > 0 THEN ROUND((net_profit / total_wagered) * 100, 2)
-            ELSE 0 
-        END as roi_percentage,
-        RANK() OVER (ORDER BY net_profit DESC) as profit_rank,
-        RANK() OVER (ORDER BY total_wagered DESC) as volume_rank,
-        CASE 
-            WHEN avg_bet_size > 100 THEN 'High Roller'
-            WHEN avg_bet_size > 50 THEN 'Medium Risk'
-            WHEN avg_bet_size > 10 THEN 'Conservative'
-            ELSE 'Penny Player'
-        END as risk_profile
-    FROM user_betting_stats
-)
-SELECT 
-    username, total_bets, total_wagered, total_winnings, net_profit,
-    win_percentage, roi_percentage, profit_rank, volume_rank, risk_profile,
-    games_played, active_days,
-    ROUND(total_wagered / NULLIF(active_days, 0), 2) as avg_daily_wagered
-FROM user_rankings
-ORDER BY net_profit DESC;</code></pre>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Additional Queries Info -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card bg-dark border-secondary">
-                <div class="card-header bg-secondary">
-                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Query 4: Transaction Patterns</h5>
-                </div>
-                <div class="card-body">
-                    <p>Financial behavior analysis including:</p>
-                    <ul>
-                        <li>Deposit/withdrawal ratio calculations</li>
-                        <li>Financial health scoring algorithms</li>
-                        <li>Date-based transaction analysis</li>
-                        <li>User financial profiling</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card bg-dark border-info">
-                <div class="card-header bg-info text-dark">
-                    <h5 class="mb-0"><i class="fas fa-brain"></i> Query 5: Betting Behavior Analysis</h5>
-                </div>
-                <div class="card-body">
-                    <p>Advanced behavioral pattern analysis:</p>
-                    <ul>
-                        <li>Risk tolerance profiling</li>
-                        <li>Game preference clustering</li>
-                        <li>Temporal betting patterns</li>
-                        <li>Predictive modeling metrics</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card bg-dark border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="fas fa-users"></i> Query 5: Cohort Analysis & User Behavior</h5>
-                </div>
-                <div class="card-body">
-                    <p>Advanced cohort analysis demonstrating:</p>
-                    <ul class="row">
-                        <li class="col-md-6">User lifecycle tracking and retention metrics</li>
-                        <li class="col-md-6">Behavioral segmentation algorithms</li>
-                        <li class="col-md-6">Temporal analysis with date functions</li>
-                        <li class="col-md-6">Customer lifetime value calculations</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mt-4 mb-4">
-        <div class="col-12">
-            <div class="alert alert-success">
-                <h5><i class="fas fa-check-circle"></i> Database Course Compliance</h5>
-                <p class="mb-0">
-                    These 5 complex queries demonstrate mastery of advanced SQL concepts required for database courses.
-                    Each query showcases multiple sophisticated techniques working together to solve real-world business problems.
-                    The queries can be executed via the command line: <code>python analytics/complex_queries.py</code>
-                </p>
             </div>
         </div>
     </div>

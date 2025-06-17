@@ -208,12 +208,22 @@
                             <small class="text-muted">{{ round.ended_at.strftime('%m/%d %H:%M') }}</small>
                             <div>
                                 {% set winner_horse_id = round.outcome.outcome_data.get('winner_horse_id') %}
-                                {% if winner_horse_id and horses_dict.get(winner_horse_id) %}
-                                    🏆 Winner: {{ horses_dict[winner_horse_id].name }}
+                                {% set winner_horse = horses_dict.get(winner_horse_id) %}
+                                {% if winner_horse %}
+                                    🏆 Winner: {{ winner_horse.name }}
                                 {% else %}
-                                    🏆 Winner: Unknown Horse
+                                    🏆 Winner: Horse #{{ winner_horse_id or 'N/A' }}
                                 {% endif %}
-                                <span class="float-end">{{ round.bets|length }} bets</span>
+                                <br>
+                                <small class="text-muted">
+                                    {% set finish_order = round.outcome.outcome_data.get('finish_order', []) %}
+                                    {% if finish_order|length >= 3 %}
+                                        {% set second_horse = horses_dict.get(finish_order[1]) %}
+                                        {% set third_horse = horses_dict.get(finish_order[2]) %}
+                                        🥈 {{ second_horse.name if second_horse else 'Horse #' + finish_order[1]|string }}
+                                        | 🥉 {{ third_horse.name if third_horse else 'Horse #' + finish_order[2]|string }}
+                                    {% endif %}
+                                </small>
                             </div>
                         </div>
                     {% endfor %}
@@ -234,6 +244,7 @@ let ctx = null;
 let raceAnimation = null;
 let raceStartTime = null;
 let raceDuration = 20000; // 20 seconds
+let isRaceAnimationPlaying = false; // New state variable to track race animation
 
 // Initialize canvas
 document.addEventListener('DOMContentLoaded', function() {
@@ -395,6 +406,7 @@ function drawHorse(x, y, horse, index) {
 }
 
 function animateRace(horses, raceResults) {
+    isRaceAnimationPlaying = true;
     if (!ctx || !horses || !raceResults) return;
     
     const startTime = Date.now();
@@ -645,9 +657,11 @@ function showRaceResults(raceResults) {
     document.getElementById('raceStatus').textContent = 'Race Finished';
     document.getElementById('raceStatus').className = 'race-status';
     
+    // Set a timeout to mark race animation as complete and check status
     setTimeout(() => {
+        isRaceAnimationPlaying = false;
         checkRaceStatus();
-    }, 3000);
+    }, 5000); // Increased to 5 seconds to give more time to see results
 }
 
 function updateHorseDisplay(horses) {
@@ -703,6 +717,11 @@ function updateHorseDisplay(horses) {
 }
 
 function checkRaceStatus() {
+    // Don't check status if race animation is playing
+    if (isRaceAnimationPlaying) {
+        return;
+    }
+
     fetch('/horse-racing/race-status')
     .then(response => response.json())
     .then(data => {
@@ -750,20 +769,22 @@ function checkRaceStatus() {
             bettingPanel.style.display = 'none';
             currentBetInfo.style.display = 'none';
             
-            // Reset displays
-            drawEmptyTrack();
-            document.getElementById('raceInfo').style.display = 'none';
-            
-            document.getElementById('horseSelection').innerHTML = `
-                <div class="text-center text-muted">
-                    <p>Start a new race to see available horses</p>
-                </div>
-            `;
-            
-            // Hide race results after a delay
-            setTimeout(() => {
-                document.getElementById('raceResults').style.display = 'none';
-            }, 10000);
+            // Reset displays only if race animation is not playing
+            if (!isRaceAnimationPlaying) {
+                drawEmptyTrack();
+                document.getElementById('raceInfo').style.display = 'none';
+                
+                document.getElementById('horseSelection').innerHTML = `
+                    <div class="text-center text-muted">
+                        <p>Start a new race to see available horses</p>
+                    </div>
+                `;
+                
+                // Hide race results after a delay
+                setTimeout(() => {
+                    document.getElementById('raceResults').style.display = 'none';
+                }, 10000);
+            }
         }
     })
     .catch(error => {

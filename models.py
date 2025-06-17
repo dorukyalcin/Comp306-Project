@@ -49,12 +49,13 @@ class Wallet(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     currency = db.Column(db.String)
     balance = db.Column(NUMERIC)
+    is_primary = db.Column(db.Boolean, default=False)
     user = db.relationship('User', back_populates='wallets')
     transactions = db.relationship('Transaction', back_populates='wallet')
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'
-    txn_id = db.Column(db.BigInteger, primary_key=True)
+    txn_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.wallet_id'))
     amount = db.Column(NUMERIC)
     txn_type = db.Column(db.String)
@@ -74,7 +75,7 @@ class Game(db.Model):
 
 class Round(db.Model):
     __tablename__ = 'rounds'
-    round_id = db.Column(db.BigInteger, primary_key=True)
+    round_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     game_id = db.Column(db.Integer, db.ForeignKey('games.game_id'))
     started_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     ended_at = db.Column(db.DateTime(timezone=True))
@@ -85,7 +86,7 @@ class Round(db.Model):
 
 class Outcome(db.Model):
     __tablename__ = 'outcomes'
-    outcome_id = db.Column(db.BigInteger, primary_key=True)
+    outcome_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     round_id = db.Column(db.BigInteger, db.ForeignKey('rounds.round_id'))
     outcome_data = db.Column(JSON)
     payout_multiplier = db.Column(NUMERIC)
@@ -94,7 +95,7 @@ class Outcome(db.Model):
 
 class Bet(db.Model):
     __tablename__ = 'bets'
-    bet_id = db.Column(db.BigInteger, primary_key=True)
+    bet_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     round_id = db.Column(db.BigInteger, db.ForeignKey('rounds.round_id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     amount = db.Column(NUMERIC)

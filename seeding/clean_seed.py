@@ -19,8 +19,9 @@ Features:
 
 import sys
 import os
-sys.path.insert(0, '/app')
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 from app import app, db
 from models import User, Wallet, Transaction, Game, Bet, Horse, Round
@@ -37,8 +38,13 @@ def clean_and_seed():
     print("All wallet balances will be guaranteed positive.")
     print()
     
-    # Confirm action
-    confirm = input("Are you sure you want to proceed? (yes/no): ").lower().strip()
+    # Skip confirmation if running from script
+    if not sys.stdin.isatty():
+        confirm = 'yes'
+    else:
+        # Confirm action
+        confirm = input("Are you sure you want to proceed? (yes/no): ").lower().strip()
+    
     if confirm not in ['yes', 'y']:
         print("❌ Seeding cancelled.")
         return

@@ -161,7 +161,8 @@ def seed_financial_data(users):
     """
     REQUIREMENT 2: Financial Data
     Creates wallets and transactions for all users:
-    - Each user gets multiple currency wallets (USD, EUR, BTC)
+    - Regular users get wallets for all currencies (USD, EUR, BTC)
+    - Admin users get only USD wallets
     - Starting balances are always positive and realistic
     - Transactions maintain positive balance throughout
     """
@@ -178,13 +179,11 @@ def seed_financial_data(users):
     transactions = []
     
     for user in users:
-        # Each user gets USD as primary currency, plus 0-2 additional currencies
-        user_currencies = ["USD"]  # USD is always the primary/default wallet
-        
-        # Optionally add 0-2 additional currencies (EUR, BTC)
-        additional_currencies = [c for c in currencies if c != "USD"]
-        if random.random() > 0.3:  # 70% chance of additional currencies
-            user_currencies.extend(random.sample(additional_currencies, random.randint(0, 2)))
+        # Determine which currencies this user should have
+        if user.is_admin:
+            user_currencies = ["USD"]  # Admins only get USD wallets
+        else:
+            user_currencies = currencies  # Regular users get all currencies
         
         for currency in user_currencies:
             # Start with a good initial balance
@@ -193,7 +192,8 @@ def seed_financial_data(users):
             wallet = Wallet(
                 user_id=user.user_id,
                 currency=currency,
-                balance=initial_balance  # We'll adjust this after transactions
+                balance=initial_balance,
+                is_primary=(currency == "USD")  # USD is always the primary wallet
             )
             wallets.append(wallet)
             db.session.add(wallet)
@@ -242,57 +242,29 @@ def seed_financial_data(users):
                             amount = safe_amount * Decimal('0.5')  # Only take 50% of safe amount
                         else:
                             continue  # Skip this transaction
+                    
+                    # Update current balance for withdrawals/losses
+                    current_balance -= amount
+                else:
+                    # Update current balance for deposits/wins
+                    current_balance += amount
                 
-                # For deposits and wins, add variety but keep reasonable
-                if txn_type in ["deposit", "bet_win"]:
-                    if currency == "BTC":
-                        amount = Decimal(str(round(random.uniform(0.01, 0.8), 4)))
-                    elif currency == "EUR":
-                        amount = Decimal(str(round(random.uniform(20, 600), 2)))
-                    else:  # USD
-                        amount = Decimal(str(round(random.uniform(25, 750), 2)))
-                
+                # Create the transaction with a timestamp
                 transaction = Transaction(
                     wallet_id=wallet.wallet_id,
                     amount=amount,
                     txn_type=txn_type,
-                    created_at=datetime.now() - timedelta(days=random.randint(0, 60))
+                    created_at=datetime.now() - timedelta(days=random.randint(0, 30))
                 )
                 transactions.append(transaction)
                 db.session.add(transaction)
                 
-                # Update running balance
-                if txn_type in ["deposit", "bet_win"]:
-                    current_balance += amount
-                else:  # withdraw, bet_loss
-                    current_balance -= amount
-                
-                # Ensure balance never goes negative (safety check)
-                if current_balance < Decimal('0'):
-                    current_balance = Decimal('0')
-            
-            # Ensure final balance is positive - if somehow it's not, set to a minimum
-            min_final_balance = Decimal(str(starting_balances[currency][0])) * Decimal('0.2')  # 20% of minimum starting
-            if current_balance < min_final_balance:
-                current_balance = min_final_balance
-                
-                # Add a corrective deposit to match this balance
-                correction_amount = min_final_balance - (current_balance - min_final_balance)
-                correction_transaction = Transaction(
-                    wallet_id=wallet.wallet_id,
-                    amount=correction_amount,
-                    txn_type="admin_credit",
-                    created_at=datetime.now() - timedelta(days=random.randint(0, 10))
-                )
-                transactions.append(correction_transaction)
-                db.session.add(correction_transaction)
-            
-            # Set final wallet balance (guaranteed positive)
-            wallet.balance = current_balance
+                # Update wallet balance to match final transaction state
+                wallet.balance = current_balance
     
-    print(f"   ✓ Created {len(wallets)} wallets across {len(set(w.currency for w in wallets))} currencies")
-    print(f"   ✓ Created {len(transactions)} transactions (all balances guaranteed positive)")
-    print(f"   ✓ Balance ranges: USD: $100-5000, EUR: €80-4000, BTC: 0.02-3.0")
+    db.session.flush()
+    print(f"   ✓ Created {len(wallets)} wallets")
+    print(f"   ✓ Created {len(transactions)} transactions")
     return wallets
 
 def seed_horses():

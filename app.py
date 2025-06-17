@@ -12,7 +12,15 @@ from sqlalchemy.sql import text
 from sqlalchemy.orm import joinedload
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://casino:casino_pass@localhost:5432/casino_db')
+
+# Use PostgreSQL for Docker, SQLite for local fallback
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Fallback to SQLite for local development
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'casino.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Change this in production!
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'profile_pics')
