@@ -188,7 +188,7 @@ class HorseRacing:
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            wallet = user.wallets[0]
+            wallet = user.get_primary_wallet()
             
             # Check if user has enough balance
             if wallet.balance < bet_amount:

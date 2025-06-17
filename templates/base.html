@@ -53,7 +53,7 @@
                             <a class="nav-link" href="{{ url_for('wallet') }}">
                                 <i class="fas fa-coins text-warning"></i>
                                 {% if current_user.wallets %}
-                                    <span class="text-light">{{ current_user.wallets[0].balance|round(2) }} {{ current_user.wallets[0].currency }}</span>
+                                    <span class="text-light">{{ current_user.get_primary_wallet().balance|round(2) }} {{ current_user.get_primary_wallet().currency }}</span>
                                 {% else %}
                                     <span class="text-light">No Wallet</span>
                                 {% endif %}

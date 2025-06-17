@@ -77,7 +77,8 @@
                                 <label class="control-label">BALANCE</label>
                                 <div class="balance-display">
                                     {% if current_user.wallets %}
-                                        ${{ current_user.wallets[0].balance|round(2) }}
+                                        {% set primary_wallet = current_user.get_primary_wallet() %}
+                                        {% if primary_wallet.currency == 'USD' %}${% elif primary_wallet.currency == 'EUR' %}€{% elif primary_wallet.currency == 'BTC' %}₿{% endif %}{{ primary_wallet.balance|round(2) }}
                                     {% else %}
                                         $0.00
                                     {% endif %}

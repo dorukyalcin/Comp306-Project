@@ -300,7 +300,7 @@ class Blackjack:
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            wallet = user.wallets[0]
+            wallet = user.get_primary_wallet()
             if wallet.balance < bet_amount:
                 return {'success': False, 'message': 'Insufficient funds'}
             
@@ -549,7 +549,7 @@ class Blackjack:
             
             # Handle winnings
             if winner_result['payout_multiplier'] > 0:
-                wallet = bet.user.wallets[0]
+                wallet = bet.user.get_primary_wallet()
                 win_amount = bet.amount * Decimal(str(winner_result['payout_multiplier']))
                 wallet.balance += win_amount
                 

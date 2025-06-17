@@ -36,7 +36,7 @@
                 </div>
             </div>
             
-            <button id="betButton" class="bet-button" onclick="placeBet()">
+            <button id="betButton" class="bet-button">
                 <span>Bet</span>
             </button>
         </div>
@@ -52,8 +52,8 @@
     <!-- Main Game Area -->
     <div class="game-area">
         <!-- Ball Drop Zone -->
-        <div class="ball-drop-zone">
-            <div id="ball" class="ball" style="display: none;"></div>
+        <div class="ball-drop-zone" id="ballDropZone">
+            <!-- Multiple balls will be created dynamically -->
         </div>
         
         <!-- Plinko Board -->
@@ -73,13 +73,9 @@
             {% endfor %}
         </div>
         
-        <!-- Results Display -->
-        <div id="resultDisplay" class="result-panel" style="display: none;">
-            <div class="result-content">
-                <h3 id="resultTitle" class="result-title"></h3>
-                <p id="resultMessage" class="result-message"></p>
-                <div id="winAmount" class="win-amount"></div>
-            </div>
+        <!-- Results Display Area -->
+        <div id="resultsContainer" class="results-container">
+            <!-- Multiple result panels will be created dynamically -->
         </div>
     </div>
 </div>
@@ -143,11 +139,6 @@
 
 .bet-input-group input:focus {
     outline: none;
-}
-
-.bet-buttons {
-    display: flex;
-    gap: 4px;
 }
 
 .bet-modifier {
@@ -266,14 +257,41 @@
 }
 
 .ball {
+    position: absolute;
     width: 12px;
     height: 12px;
-    background: radial-gradient(circle at 30% 30%, #ffffff, #00d4aa, #00b89a);
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5a52);
     border-radius: 50%;
-    position: absolute;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0, 212, 170, 0.5);
-    transition: all 0.1s ease;
+    border: 1px solid #ff5252;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    z-index: 10;
+    transition: transform 0.05s ease;
+}
+
+/* Multiple balls with different colors */
+.ball.ball-1 { 
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5a52);
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.ball.ball-2 { 
+    background: radial-gradient(circle at 30% 30%, #4ecdc4, #45b7a8);
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.ball.ball-3 { 
+    background: radial-gradient(circle at 30% 30%, #45b7d1, #357abd);
+    box-shadow: 0 0 10px rgba(69, 183, 209, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.ball.ball-4 { 
+    background: radial-gradient(circle at 30% 30%, #f9ca24, #f0932b);
+    box-shadow: 0 0 10px rgba(249, 202, 36, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.ball.ball-5 { 
+    background: radial-gradient(circle at 30% 30%, #a55eea, #8854d0);
+    box-shadow: 0 0 10px rgba(165, 94, 234, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
 }
 
 /* Plinko Board */
@@ -288,12 +306,20 @@
 }
 
 .peg {
+    position: absolute;
     width: 6px;
     height: 6px;
-    background: #ffffff;
+    background: #ffd700;
     border-radius: 50%;
-    position: absolute;
-    box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+    border: 1px solid #ffed4e;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    z-index: 2;
+}
+
+.peg:hover {
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+    transform: scale(1.1);
 }
 
 /* Multiplier Slots */
@@ -322,11 +348,11 @@
 }
 
 .multiplier-slot.winning {
-    animation: slotWin 1s ease-in-out;
-    box-shadow: 0 0 20px rgba(0, 212, 170, 0.6);
+    animation: winPulse 0.6s ease-in-out;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
 }
 
-@keyframes slotWin {
+@keyframes winPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
 }
@@ -338,50 +364,80 @@
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Result Panel */
-.result-panel {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(42, 45, 57, 0.95);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    border: 2px solid #00d4aa;
-    backdrop-filter: blur(10px);
-    animation: resultSlide 0.4s ease-out;
-    z-index: 1001;
+/* Results container for multiple results */
+.results-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-@keyframes resultSlide {
-    from { 
-        transform: translate(-50%, -50%) scale(0.8); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translate(-50%, -50%) scale(1); 
-        opacity: 1; 
-    }
+.result-panel {
+    background: rgba(42, 45, 57, 0.95);
+    border: 1px solid #3a3d49;
+    border-radius: 12px;
+    padding: 15px;
+    color: white;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.3s ease-out;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.result-panel.win {
+    border-color: #4ecdc4;
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.result-panel.lose {
+    border-color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
 }
 
 .result-title {
-    color: #00d4aa;
-    font-size: 1.5rem;
-    margin: 0 0 10px 0;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 0 0 8px 0;
 }
 
 .result-message {
-    color: #8b949e;
-    font-size: 1rem;
-    margin: 0 0 15px 0;
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+    opacity: 0.8;
 }
 
 .win-amount {
-    color: white;
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #4ecdc4;
+}
+
+.result-panel.lose .win-amount {
+    color: #ff6b6b;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Auto-hide animation */
+.result-panel.fade-out {
+    opacity: 0;
+    transform: translateX(100%);
 }
 
 /* Responsive Design */
@@ -425,9 +481,26 @@
 </style>
 
 <script>
-let isDropping = false;
-const boardData = {{ board_data|tojson }};
-const walletCurrency = '{{ wallet.currency }}';
+// Global variables for multiple ball support
+let ballCounter = 0;
+let activeBalls = new Map();
+let boardData = {};
+let walletCurrency = 'USD';
+
+// Initialize board data from server
+{% if board_data %}
+boardData = {{ board_data|tojson|safe }};
+{% else %}
+boardData = {
+    multipliers: [1000, 50, 20, 10, 5, 2, 1, 0.5, 0.3, 0.5, 1, 2, 5, 10, 20, 50, 1000],
+    slot_names: ['1000x', '50x', '20x', '10x', '5x', '2x', '1x', '0.5x', '0.3x', '0.5x', '1x', '2x', '5x', '10x', '20x', '50x', '1000x']
+};
+{% endif %}
+
+// Initialize wallet currency
+{% if wallet and wallet.currency %}
+walletCurrency = '{{ wallet.currency }}';
+{% endif %}
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function() {
@@ -438,9 +511,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializePlinkoBoard() {
     const board = document.getElementById('plinkoBoard');
-    const rows = 16; // Fixed to match the design
-    const boardWidth = board.offsetWidth - 40;
-    const boardHeight = board.offsetHeight - 40;
+    const rows = 16;
+    const boardWidth = board.offsetWidth;
+    const boardHeight = board.offsetHeight;
     
     // Clear existing pegs
     board.innerHTML = '';
@@ -448,16 +521,19 @@ function initializePlinkoBoard() {
     // Generate pegs in triangular pattern
     for (let row = 0; row < rows; row++) {
         const pegsInRow = row + 1;
-        const rowY = (boardHeight / rows) * row + 30;
+        const rowY = (boardHeight / (rows + 1)) * (row + 1);
         
         for (let peg = 0; peg < pegsInRow; peg++) {
             const pegElement = document.createElement('div');
             pegElement.className = 'peg';
+            pegElement.setAttribute('data-row', row);
+            pegElement.setAttribute('data-peg', peg);
             
             // Calculate peg position for centered triangular arrangement
-            const spacing = boardWidth / (rows + 1);
-            const rowOffset = (boardWidth - (pegsInRow - 1) * spacing) / 2;
-            const pegX = rowOffset + (peg * spacing) - 3; // Center the peg
+            const totalSpacing = boardWidth * 0.8;
+            const spacing = totalSpacing / Math.max(1, (rows - 1));
+            const rowOffset = (boardWidth - ((pegsInRow - 1) * spacing)) / 2;
+            const pegX = rowOffset + (peg * spacing);
             
             pegElement.style.left = pegX + 'px';
             pegElement.style.top = rowY + 'px';
@@ -476,161 +552,283 @@ function initializeControls() {
 }
 
 async function dropBall() {
-    if (isDropping) return;
-    
     const betAmount = parseFloat(document.getElementById('betAmount').value);
     if (!betAmount || betAmount <= 0) {
         alert('Please enter a valid bet amount');
         return;
     }
     
-    isDropping = true;
-    document.getElementById('betButton').disabled = true;
-    document.getElementById('resultDisplay').style.display = 'none';
+    // Create unique ball ID
+    ballCounter++;
+    const ballId = 'ball-' + ballCounter;
     
     try {
-        // Start ball animation first
-        const animationPromise = animateBallDrop();
+        // Create ball element
+        const ball = createBallElement(ballId);
         
-        // Make API call simultaneously
-        const response = await fetch('/api/plinko/bet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                amount: betAmount,
-                risk_level: getCurrentRiskLevel()
-            })
-        });
+        // Start ball animation and API call simultaneously
+        const animationPromise = animateBallDrop(ball, ballId);
+        const apiPromise = placeBetAPI(betAmount);
         
-        const result = await response.json();
+        // Wait for both to complete
+        const results = await Promise.all([animationPromise, apiPromise]);
+        const apiResult = results[1];
         
-        // Wait for animation to complete
-        await animationPromise;
+        // Show result
+        displayResult(apiResult, ballId);
+        updateWalletBalance(apiResult);
         
-        // Show results
+        // Clean up ball after showing result
         setTimeout(() => {
-            displayResult(result);
-            updateWalletBalance(result);
-            isDropping = false;
-            document.getElementById('betButton').disabled = false;
-        }, 500);
+            if (ball && ball.parentNode) {
+                ball.parentNode.removeChild(ball);
+            }
+            activeBalls.delete(ballId);
+        }, 2000);
         
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
-        isDropping = false;
-        document.getElementById('betButton').disabled = false;
+        showErrorResult('An error occurred: ' + error.message, ballId);
     }
 }
 
-function animateBallDrop() {
+function createBallElement(ballId) {
+    const ballDropZone = document.getElementById('ballDropZone');
+    const ball = document.createElement('div');
+    
+    // Assign ball class with color variation
+    const colorClass = 'ball-' + (((ballCounter - 1) % 5) + 1);
+    ball.className = 'ball ' + colorClass;
+    ball.id = ballId;
+    
+    // Start at center top
+    ball.style.left = '50%';
+    ball.style.top = '-10px';
+    ball.style.transform = 'translateX(-50%)';
+    ball.style.display = 'block';
+    
+    ballDropZone.appendChild(ball);
+    activeBalls.set(ballId, ball);
+    
+    return ball;
+}
+
+async function placeBetAPI(betAmount) {
+    const response = await fetch('/api/plinko/bet', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            amount: betAmount,
+            risk_level: getCurrentRiskLevel()
+        })
+    });
+    
+    if (!response.ok) {
+        throw new Error('HTTP error! status: ' + response.status);
+    }
+    
+    return await response.json();
+}
+
+function animateBallDrop(ball, ballId) {
     return new Promise((resolve) => {
-        const ball = document.getElementById('ball');
         const board = document.getElementById('plinkoBoard');
+        const pegs = document.querySelectorAll('.peg');
         
-        // Reset ball position to center top
-        ball.style.display = 'block';
+        // Move ball from ballDropZone to board coordinate system
+        board.appendChild(ball);
+        
+        // Reset ball position to center top of board
         ball.style.left = '50%';
-        ball.style.top = '-10px';
+        ball.style.top = '0px';
         ball.style.transform = 'translateX(-50%)';
         
         // Animation parameters
-        let position = 50; // Start at center (percentage)
         let currentRow = 0;
+        let currentPegIndex = 0;
         const totalRows = 16;
+        const boardWidth = board.offsetWidth;
+        const boardHeight = board.offsetHeight;
+        
+        // Organize pegs by row
+        const pegsByRow = [];
+        for (let row = 0; row < totalRows; row++) {
+            pegsByRow[row] = [];
+        }
+        
+        // Group pegs by their row attribute
+        pegs.forEach(pegElement => {
+            const row = parseInt(pegElement.getAttribute('data-row'));
+            const pegIndex = parseInt(pegElement.getAttribute('data-peg'));
+            if (row >= 0 && row < totalRows) {
+                pegsByRow[row][pegIndex] = pegElement;
+            }
+        });
         
         const animationInterval = setInterval(() => {
+            // Check if ball still exists
+            if (!activeBalls.has(ballId)) {
+                clearInterval(animationInterval);
+                resolve();
+                return;
+            }
+            
             if (currentRow >= totalRows) {
                 clearInterval(animationInterval);
                 
-                // Calculate final slot position
-                const finalSlotIndex = Math.floor((position / 100) * boardData.multipliers.length);
-                const clampedIndex = Math.max(0, Math.min(boardData.multipliers.length - 1, finalSlotIndex));
+                // Calculate final slot
+                const finalSlotIndex = Math.max(0, Math.min(boardData.multipliers.length - 1, currentPegIndex));
                 
-                // Animate to final position in multiplier slot
+                // Animate to final position
                 setTimeout(() => {
-                    const slotWidth = 100 / boardData.multipliers.length;
-                    const slotCenter = (clampedIndex * slotWidth) + (slotWidth / 2);
-                    
-                    ball.style.top = (board.offsetHeight + 25) + 'px';
-                    ball.style.left = slotCenter + '%';
-                    
-                    // Highlight winning slot
-                    const slots = document.querySelectorAll('.multiplier-slot');
-                    if (slots[clampedIndex]) {
-                        slots[clampedIndex].classList.add('winning');
+                    if (activeBalls.has(ballId)) {
+                        const slotWidth = 100 / boardData.multipliers.length;
+                        const slotCenter = (finalSlotIndex * slotWidth) + (slotWidth / 2);
                         
-                        setTimeout(() => {
-                            slots[clampedIndex].classList.remove('winning');
-                            ball.style.display = 'none';
-                            resolve(); // Animation complete
-                        }, 800);
-                    } else {
-                        ball.style.display = 'none';
-                        resolve();
+                        ball.style.top = (boardHeight + 25) + 'px';
+                        ball.style.left = slotCenter + '%';
+                        ball.style.transform = 'translateX(-50%)';
+                        
+                        // Highlight winning slot
+                        const slots = document.querySelectorAll('.multiplier-slot');
+                        if (slots[finalSlotIndex]) {
+                            slots[finalSlotIndex].classList.add('winning');
+                            
+                            setTimeout(() => {
+                                slots[finalSlotIndex].classList.remove('winning');
+                            }, 800);
+                        }
                     }
+                    resolve();
                 }, 200);
                 
                 return;
             }
             
-            // Simulate realistic bouncing with some center bias
-            const bounceIntensity = 15 + (Math.random() * 10); // Variable bounce
-            const bounce = (Math.random() - 0.5) * bounceIntensity;
-            
-            // Add slight center bias to prevent extreme outcomes
-            const centerBias = (50 - position) * 0.1;
-            position += bounce + centerBias;
-            
-            // Keep within reasonable bounds
-            position = Math.max(10, Math.min(90, position));
-            
-            // Update ball position with faster animation
-            const rowHeight = board.offsetHeight / totalRows;
-            ball.style.top = (currentRow * rowHeight + 20) + 'px';
-            ball.style.left = position + '%';
+            // Get the peg the ball should hit
+            const pegsInThisRow = pegsByRow[currentRow];
+            if (pegsInThisRow && pegsInThisRow.length > 0) {
+                const validPegIndex = Math.max(0, Math.min(pegsInThisRow.length - 1, currentPegIndex));
+                const targetPeg = pegsInThisRow[validPegIndex];
+                
+                if (targetPeg) {
+                    // Get peg position (already positioned relative to board)
+                    const pegX = parseFloat(targetPeg.style.left);
+                    const pegY = parseFloat(targetPeg.style.top);
+                    
+                    // Position ball at peg center (peg is 6px + 1px border = 8px total, so center is +4px)
+                    ball.style.left = (pegX + 4) + 'px';
+                    ball.style.top = (pegY + 4) + 'px';
+                    ball.style.transform = 'translate(-50%, -50%)';
+                    
+                    // Visual peg hit effect
+                    targetPeg.style.transform = 'scale(1.4)';
+                    targetPeg.style.boxShadow = '0 0 15px rgba(255, 215, 0, 1)';
+                    
+                    setTimeout(() => {
+                        targetPeg.style.transform = 'scale(1)';
+                        targetPeg.style.boxShadow = '0 0 8px rgba(255, 215, 0, 0.5)';
+                    }, 150);
+                    
+                    // Plinko physics: 50% chance left or right
+                    const goRight = Math.random() < 0.5;
+                    
+                    if (goRight) {
+                        currentPegIndex = Math.min(currentRow + 1, currentPegIndex + 1);
+                    } else {
+                        currentPegIndex = Math.max(0, currentPegIndex);
+                    }
+                }
+            }
             
             currentRow++;
-        }, 120); // Faster animation (was 200ms, now 120ms)
+        }, 300);
     });
 }
 
-function displayResult(result) {
-    const resultDisplay = document.getElementById('resultDisplay');
-    const resultTitle = document.getElementById('resultTitle');
-    const resultMessage = document.getElementById('resultMessage');
-    const winAmount = document.getElementById('winAmount');
+function displayResult(result, ballId) {
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultPanel = document.createElement('div');
+    
+    resultPanel.className = 'result-panel';
+    resultPanel.id = 'result-' + ballId;
     
     if (result.success) {
+        const currency = result.wallet_currency || walletCurrency || 'USD';
+        let symbol;
+        switch (currency) {
+            case 'EUR': symbol = '€'; break;
+            case 'BTC': symbol = '₿'; break;
+            case 'USD':
+            default: symbol = '$'; break;
+        }
+        
         if (result.win_amount > 0) {
-            resultTitle.textContent = '🎉 WIN!';
-            resultMessage.textContent = `Ball landed in ${result.slot_name} slot!`;
-            winAmount.textContent = `+${getCurrencySymbol()}${result.win_amount.toFixed(2)}`;
+            resultPanel.classList.add('win');
+            resultPanel.innerHTML = 
+                '<div class="result-title">🎉 WIN!</div>' +
+                '<div class="result-message">Ball landed in ' + result.slot_name + ' slot!</div>' +
+                '<div class="win-amount">+' + symbol + result.win_amount.toFixed(2) + '</div>';
         } else {
-            resultTitle.textContent = '😔 No Win';
-            resultMessage.textContent = `Ball landed in ${result.slot_name} slot.`;
-            winAmount.textContent = `${getCurrencySymbol()}0.00`;
+            resultPanel.classList.add('lose');
+            resultPanel.innerHTML = 
+                '<div class="result-title">😔 No Win</div>' +
+                '<div class="result-message">Ball landed in ' + result.slot_name + ' slot.</div>' +
+                '<div class="win-amount">' + symbol + '0.00</div>';
         }
     } else {
-        resultTitle.textContent = '❌ Error';
-        resultMessage.textContent = result.message || 'Something went wrong.';
-        winAmount.textContent = '';
+        resultPanel.classList.add('lose');
+        resultPanel.innerHTML = 
+            '<div class="result-title">❌ Error</div>' +
+            '<div class="result-message">' + (result.message || 'Something went wrong.') + '</div>' +
+            '<div class="win-amount"></div>';
     }
     
-    resultDisplay.style.display = 'block';
+    // Add to container
+    resultsContainer.appendChild(resultPanel);
     
-    // Auto-hide after 3 seconds
+    // Auto-remove after 5 seconds
     setTimeout(() => {
-        resultDisplay.style.display = 'none';
-    }, 3000);
+        if (resultPanel.parentNode) {
+            resultPanel.classList.add('fade-out');
+            setTimeout(() => {
+                if (resultPanel.parentNode) {
+                    resultPanel.parentNode.removeChild(resultPanel);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+function showErrorResult(message, ballId) {
+    displayResult({
+        success: false,
+        message: message
+    }, ballId);
 }
 
 function updateWalletBalance(result) {
     if (result.success && result.wallet_balance !== undefined) {
         const balanceDisplay = document.getElementById('walletBalance');
-        balanceDisplay.textContent = `${getCurrencySymbol()}${result.wallet_balance.toFixed(2)}`;
+        const currency = result.wallet_currency || walletCurrency || 'USD';
+        let symbol;
+        
+        switch (currency) {
+            case 'EUR': symbol = '€'; break;
+            case 'BTC': symbol = '₿'; break;
+            case 'USD':
+            default: symbol = '$'; break;
+        }
+        
+        balanceDisplay.textContent = symbol + result.wallet_balance.toFixed(2);
+        
+        // Also update navbar
+        const navWalletDisplay = document.querySelector('.nav-link i.fa-coins + span');
+        if (navWalletDisplay) {
+            navWalletDisplay.textContent = symbol + result.wallet_balance.toFixed(2) + ' ' + currency;
+        }
     }
 }
 
@@ -648,7 +846,7 @@ window.addEventListener('resize', () => {
     setTimeout(initializePlinkoBoard, 100);
 });
 
-// Missing functions for bet controls
+// Utility functions
 function modifyBet(multiplier) {
     const betInput = document.getElementById('betAmount');
     const currentAmount = parseFloat(betInput.value) || 0;
@@ -665,25 +863,23 @@ function selectRisk(riskLevel) {
     document.querySelectorAll('.risk-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-risk="${riskLevel}"]`).classList.add('active');
+    document.querySelector('[data-risk="' + riskLevel + '"]').classList.add('active');
     
-    // Update multipliers based on risk level
+    // Update multipliers
     updateMultipliers(riskLevel);
 }
 
 function updateMultipliers(riskLevel) {
-    // Make API call to get updated board data
-    fetch(`/api/plinko/board-data?risk=${riskLevel}`)
+    fetch('/api/plinko/board-data?risk=' + riskLevel)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update multiplier slots with new values and colors
                 const slots = document.querySelectorAll('.multiplier-slot');
                 data.board_data.multipliers.forEach((multiplier, index) => {
                     if (slots[index]) {
                         slots[index].setAttribute('data-multiplier', multiplier);
                         slots[index].style.backgroundColor = data.board_data.slot_colors[multiplier];
-                        slots[index].querySelector('.slot-multiplier').textContent = `${multiplier}x`;
+                        slots[index].querySelector('.slot-multiplier').textContent = multiplier + 'x';
                     }
                 });
                 
@@ -696,23 +892,22 @@ function updateMultipliers(riskLevel) {
         });
 }
 
-function placeBet() {
-    dropBall();
-}
-
 function getCurrentRiskLevel() {
     const activeRiskBtn = document.querySelector('.risk-btn.active');
     return activeRiskBtn ? activeRiskBtn.getAttribute('data-risk') : 'high';
 }
 
-// Initialize wallet balance display
 function initializeWalletBalance() {
     const balanceElement = document.getElementById('walletBalance');
-    if (typeof wallet !== 'undefined') {
-        balanceElement.textContent = `${getCurrencySymbol()}${wallet.balance.toFixed(2)}`;
-    } else {
-        balanceElement.textContent = 'Loading...';
-    }
+    const currency = walletCurrency || 'USD';
+    const symbol = getCurrencySymbol();
+    
+    {% if wallet %}
+    const initialBalance = {{ wallet.balance|round(2) }};
+    balanceElement.textContent = symbol + initialBalance.toFixed(2);
+    {% else %}
+    balanceElement.textContent = 'No Wallet';
+    {% endif %}
 }
 </script>
 {% endblock %} 

@@ -141,7 +141,7 @@ class BaseGame(ABC):
             if not user.wallets:
                 return False, None, "User wallet not found"
             
-            wallet = user.wallets[0]  # Assuming first wallet
+            wallet = user.get_primary_wallet()  # Use primary wallet
             
             if required_balance and wallet.balance < required_balance:
                 return False, wallet, "Insufficient funds"

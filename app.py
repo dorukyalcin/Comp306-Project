@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from games import HorseRacing, Slots, Plinko, Blackjack
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/casino_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://casino:casino_pass@localhost:5432/casino_db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Change this in production!
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'profile_pics')
@@ -147,7 +147,7 @@ def wallet():
         flash('No wallet found. Please contact support to create a wallet.', 'danger')
         return redirect(url_for('index'))
     
-    wallet = current_user.wallets[0]
+    wallet = current_user.get_primary_wallet()
     
     if request.method == 'POST':
         try:
@@ -260,7 +260,7 @@ def horse_racing():
         return redirect(url_for('index'))
     
     # Get user's wallet
-    wallet = current_user.wallets[0] if current_user.wallets else None
+    wallet = current_user.get_primary_wallet() if current_user.wallets else None
     if not wallet:
         flash('No wallet found. Please contact support.', 'danger')
         return redirect(url_for('index'))
@@ -349,7 +349,7 @@ def slots():
         return redirect(url_for('index'))
     
     # Get user's primary wallet (any currency)
-    wallet = current_user.wallets[0] if current_user.wallets else None
+    wallet = current_user.get_primary_wallet() if current_user.wallets else None
     if not wallet:
         flash('No wallet found. Please contact support.', 'danger')
         return redirect(url_for('index'))
@@ -381,7 +381,7 @@ def slots_bet():
         
         if result['success']:
             # Update wallet balance in response - use primary wallet
-            wallet = current_user.wallets[0] if current_user.wallets else None
+            wallet = current_user.get_primary_wallet() if current_user.wallets else None
             if wallet:
                 result['wallet_balance'] = float(wallet.balance)
                 result['wallet_currency'] = wallet.currency
@@ -407,7 +407,7 @@ def plinko():
         board_data = plinko_game.get_board_data('high')
         
         # Get user's primary wallet
-        wallet = current_user.wallets[0] if current_user.wallets else None
+        wallet = current_user.get_primary_wallet() if current_user.wallets else None
         if not wallet:
             flash('No wallet found. Please contact support.', 'error')
             return redirect(url_for('index'))
@@ -431,15 +431,29 @@ def api_plinko_bet():
         bet_amount = float(data.get('amount', 0))
         risk_level = data.get('risk_level', 'high')
         
+        print(f"🎰 PLINKO BET: User {current_user.username} betting {bet_amount} at {risk_level} risk")
+        
         if bet_amount <= 0:
+            print(f"❌ Invalid bet amount: {bet_amount}")
             return jsonify({'success': False, 'message': 'Invalid bet amount'})
+        
+        # Check user's wallet balance before betting
+        wallet = current_user.get_primary_wallet()
+        if wallet:
+            print(f"💰 Current wallet balance: {wallet.balance} {wallet.currency}")
+        else:
+            print("❌ No wallet found")
+            return jsonify({'success': False, 'message': 'No wallet found'})
         
         plinko = Plinko()
         result = plinko.place_bet(current_user.user_id, bet_amount, risk_level)
         
+        print(f"🎲 Bet result: {result}")
+        
         return jsonify(result)
         
     except Exception as e:
+        print(f"❌ Error in Plinko bet: {str(e)}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 @app.route('/api/plinko/board-data')
@@ -471,7 +485,7 @@ def blackjack():
         blackjack_game = Blackjack()
         
         # Get user's primary wallet
-        wallet = current_user.wallets[0] if current_user.wallets else None
+        wallet = current_user.get_primary_wallet() if current_user.wallets else None
         if not wallet:
             flash('No wallet found. Please contact support.', 'error')
             return redirect(url_for('index'))
@@ -720,7 +734,7 @@ def admin_delete_user(user_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True) 
+    app.run(debug=True, port=5001) 
 
 import subprocess
 

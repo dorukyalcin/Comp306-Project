@@ -20,6 +20,19 @@ class User(db.Model, UserMixin):
 
     def get_id(self):
         return str(self.user_id)
+    
+    def get_primary_wallet(self):
+        """Get the primary wallet for betting, prioritizing USD currency"""
+        if not self.wallets:
+            return None
+        
+        # First try to find USD wallet
+        for wallet in self.wallets:
+            if wallet.currency == 'USD':
+                return wallet
+        
+        # If no USD wallet, return the first wallet
+        return self.wallets[0]
 
 class UserSettings(db.Model):
     __tablename__ = 'user_settings'

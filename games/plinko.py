@@ -207,8 +207,8 @@ class Plinko:
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            # Use the first available wallet (supports USD, EUR, BTC)
-            wallet = user.wallets[0]
+            # Use the primary wallet (prioritizes USD, supports all currencies)
+            wallet = user.get_primary_wallet()
             if wallet.balance < bet_amount:
                 return {'success': False, 'message': 'Insufficient funds'}
             
