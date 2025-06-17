@@ -988,6 +988,193 @@ def admin_analytics():
             print("Error in horse racing query:", str(e))  # Debug print
             analytics_results['horse_racing'] = []
         
+        # Query 4: Transaction Pattern Analysis
+        transaction_sql = """
+        WITH user_transaction_summary AS (
+            SELECT 
+                u.user_id,
+                u.username,
+                u.created_at as user_since,
+                w.currency,
+                w.balance as current_balance,
+                COUNT(t.txn_id) as total_transactions,
+                SUM(CASE WHEN t.txn_type IN ('deposit', 'admin_credit') THEN t.amount ELSE 0 END) as total_deposits,
+                SUM(CASE WHEN t.txn_type IN ('withdraw', 'admin_debit') THEN t.amount ELSE 0 END) as total_withdrawals,
+                SUM(CASE WHEN t.txn_type = 'bet_loss' THEN t.amount ELSE 0 END) as total_bet_losses,
+                SUM(CASE WHEN t.txn_type = 'bet_win' THEN t.amount ELSE 0 END) as total_bet_wins,
+                MIN(t.created_at) as first_transaction,
+                MAX(t.created_at) as last_transaction,
+                COUNT(DISTINCT DATE(t.created_at)) as active_transaction_days
+            FROM users u
+            JOIN wallets w ON u.user_id = w.user_id
+            LEFT JOIN transactions t ON w.wallet_id = t.wallet_id
+            WHERE u.is_admin = FALSE
+            GROUP BY u.user_id, u.username, u.created_at, w.currency, w.balance
+            HAVING COUNT(t.txn_id) > 0
+        ),
+        user_financial_metrics AS (
+            SELECT *,
+                EXTRACT(DAYS FROM (COALESCE(last_transaction, NOW()) - user_since)) + 1 as days_since_signup,
+                EXTRACT(DAYS FROM (last_transaction - first_transaction)) + 1 as transaction_span_days,
+                total_deposits - total_withdrawals as net_deposits,
+                total_bet_wins - total_bet_losses as net_betting_result,
+                CASE 
+                    WHEN total_deposits > 0 
+                    THEN ROUND((total_withdrawals / total_deposits) * 100, 2)
+                    ELSE 0 
+                END as withdrawal_ratio_pct,
+                CASE 
+                    WHEN active_transaction_days > 0 
+                    THEN ROUND(total_transactions::NUMERIC / active_transaction_days, 2)
+                    ELSE 0 
+                END as avg_transactions_per_day,
+                CASE 
+                    WHEN total_deposits > 0 
+                    THEN ROUND(((total_bet_losses + total_bet_wins) / total_deposits) * 100, 2)
+                    ELSE 0 
+                END as betting_intensity_pct
+            FROM user_transaction_summary
+        ),
+        financial_health_scoring AS (
+            SELECT *,
+                CASE 
+                    WHEN net_deposits > 0 AND withdrawal_ratio_pct < 50 THEN 'Healthy Depositor'
+                    WHEN net_deposits > 0 AND withdrawal_ratio_pct < 80 THEN 'Balanced Player'  
+                    WHEN net_deposits <= 0 AND current_balance > 0 THEN 'Profitable Player'
+                    WHEN current_balance <= 0 THEN 'Depleted Account'
+                    ELSE 'High Withdrawal Risk'
+                END as financial_health_status,
+                RANK() OVER (ORDER BY total_deposits DESC) as deposit_volume_rank,
+                RANK() OVER (ORDER BY betting_intensity_pct DESC) as betting_activity_rank
+            FROM user_financial_metrics
+        )
+        SELECT 
+            username,
+            currency,
+            ROUND(current_balance, 2) as balance,
+            total_transactions,
+            ROUND(total_deposits, 2) as deposits,
+            ROUND(total_withdrawals, 2) as withdrawals,
+            ROUND(net_deposits, 2) as net_deposits,
+            withdrawal_ratio_pct,
+            betting_intensity_pct,
+            avg_transactions_per_day,
+            transaction_span_days,
+            financial_health_status,
+            deposit_volume_rank
+        FROM financial_health_scoring
+        WHERE total_deposits > 0
+        ORDER BY total_deposits DESC
+        LIMIT 15;
+        """
+        
+        try:
+            print("Executing transaction pattern query...")  # Debug print
+            result = db.session.execute(text(transaction_sql))
+            print("Transaction query executed successfully")  # Debug print
+            rows = result.fetchall()
+            print(f"Found {len(rows)} transaction records")  # Debug print
+            analytics_results['transaction_patterns'] = [dict(row._mapping) for row in rows]
+        except Exception as e:
+            print("Error in transaction pattern query:", str(e))  # Debug print
+            analytics_results['transaction_patterns'] = []
+        
+        # Query 5: Betting Behavior Cohort Analysis
+        cohort_sql = """
+        WITH user_cohorts AS (
+            SELECT 
+                user_id,
+                username,
+                DATE_TRUNC('month', created_at) as cohort_month,
+                created_at
+            FROM users 
+            WHERE is_admin = FALSE
+        ),
+        user_first_bet AS (
+            SELECT 
+                b.user_id,
+                MIN(DATE(b.placed_at)) as first_bet_date,
+                DATE_TRUNC('month', MIN(b.placed_at)) as first_bet_month
+            FROM bets b
+            GROUP BY b.user_id
+        ),
+        user_betting_journey AS (
+            SELECT 
+                uc.user_id,
+                uc.username,
+                uc.cohort_month,
+                ufb.first_bet_date,
+                ufb.first_bet_month,
+                EXTRACT(DAYS FROM (ufb.first_bet_date - uc.created_at::DATE)) as days_to_first_bet,
+                COUNT(b.bet_id) as total_bets,
+                COUNT(DISTINCT DATE(b.placed_at)) as betting_days,
+                COUNT(DISTINCT r.game_id) as games_tried,
+                SUM(b.amount) as total_wagered,
+                AVG(b.amount) as avg_bet_size,
+                STDDEV(b.amount) as bet_size_variance,
+                MIN(b.placed_at) as betting_start,
+                MAX(b.placed_at) as last_bet_date,
+                EXTRACT(DAYS FROM (MAX(b.placed_at) - MIN(b.placed_at))) + 1 as betting_lifespan_days
+            FROM user_cohorts uc
+            LEFT JOIN user_first_bet ufb ON uc.user_id = ufb.user_id
+            LEFT JOIN bets b ON uc.user_id = b.user_id
+            LEFT JOIN rounds r ON b.round_id = r.round_id
+            GROUP BY uc.user_id, uc.username, uc.cohort_month, ufb.first_bet_date, ufb.first_bet_month
+            HAVING COUNT(b.bet_id) > 0
+        ),
+        user_behavior_segments AS (
+            SELECT 
+                ubj.*,
+                CASE 
+                    WHEN total_bets >= 50 AND betting_lifespan_days >= 60 THEN 'High Value Regular'
+                    WHEN total_bets >= 20 AND betting_lifespan_days >= 30 THEN 'Active Player'
+                    WHEN total_bets >= 10 THEN 'Casual Player'
+                    WHEN total_bets >= 5 THEN 'Trial User'
+                    ELSE 'One-time Player'
+                END as player_segment,
+                CASE 
+                    WHEN avg_bet_size >= 100 THEN 'High Roller'
+                    WHEN avg_bet_size >= 50 THEN 'Medium Stake'
+                    WHEN avg_bet_size >= 20 THEN 'Regular Stake'
+                    ELSE 'Low Stake'
+                END as stake_category,
+                CASE 
+                    WHEN betting_days > 0 
+                    THEN ROUND(total_bets::NUMERIC / betting_days, 2)
+                    ELSE 0 
+                END as bets_per_active_day
+            FROM user_betting_journey
+        )
+        SELECT 
+            username,
+            cohort_month,
+            days_to_first_bet,
+            total_bets,
+            betting_days,
+            games_tried,
+            ROUND(total_wagered, 2) as total_wagered,
+            ROUND(avg_bet_size, 2) as avg_bet_size,
+            betting_lifespan_days,
+            bets_per_active_day,
+            player_segment,
+            stake_category,
+            RANK() OVER (ORDER BY total_wagered DESC) as value_rank
+        FROM user_behavior_segments
+        ORDER BY total_wagered DESC
+        LIMIT 15;
+        """
+        
+        try:
+            print("Executing betting behavior cohort query...")  # Debug print
+            result = db.session.execute(text(cohort_sql))
+            print("Cohort query executed successfully")  # Debug print
+            rows = result.fetchall()
+            print(f"Found {len(rows)} user behavioral records")  # Debug print
+            analytics_results['betting_behavior'] = [dict(row._mapping) for row in rows]
+        except Exception as e:
+            print("Error in betting behavior cohort query:", str(e))  # Debug print
+            analytics_results['betting_behavior'] = []
+        
         return render_template('admin/analytics.html', analytics=analytics_results)
         
     except Exception as e:
