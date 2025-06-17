@@ -34,33 +34,21 @@ echo "⏳ Step 2: Waiting for services to be ready..."
 sleep 5
 
 echo ""
-echo "🌱 Step 3: Running clean database seeding with positive balances..."
-docker-compose exec web python seeding/clean_seed.py <<EOF
-yes
-EOF
+echo "🗄️  Step 3: Initializing database tables..."
+docker-compose exec web python seeding/init_db.py
 
 echo ""
-echo "🔍 Step 4: Verifying database contents..."
+echo "🎮 Step 4: Setting up casino games..."
+docker-compose exec web python seeding/seed_games.py
+
+echo ""
+echo "🌱 Step 5: Running clean database seeding with positive balances..."
+echo "yes" | docker-compose exec -T web python seeding/clean_seed.py
+
+echo ""
+echo "🔍 Step 6: Verifying database contents..."
 echo "Database Summary:"
-docker-compose exec web python -c "
-import sys
-sys.path.insert(0, '/app')
-from app import app, db
-from models import *
-with app.app_context():
-    print(f'👥 Users: {User.query.count()}')
-    print(f'💰 Wallets: {Wallet.query.count()}')
-    print(f'💳 Transactions: {Transaction.query.count()}')
-    print(f'🎮 Games: {Game.query.count()}')
-    print(f'🎯 Rounds: {Round.query.count()}')
-    print(f'🎲 Bets: {Bet.query.count()}')
-    print(f'😏 Sarcastic Templates: {SarcasTemp.query.count()}')
-    print(f'🐎 Horses: {Horse.query.count()}')
-    if Horse.query.count() > 0:
-        print('🏁 Horse Racing System: READY')
-    else:
-        print('⚠️  Horse Racing System: NOT READY')
-"
+docker-compose exec web python -c "import sys; sys.path.insert(0, '/app'); from app import app, db; from models import *; app.app_context().push(); print(f'👥 Users: {User.query.count()}'); print(f'💰 Wallets: {Wallet.query.count()}'); print(f'💳 Transactions: {Transaction.query.count()}'); print(f'🎮 Games: {Game.query.count()}'); print(f'🎯 Rounds: {Round.query.count()}'); print(f'🎲 Bets: {Bet.query.count()}'); print(f'🐎 Horses: {Horse.query.count()}'); print('🏁 Horse Racing System: READY' if Horse.query.count() > 0 else '⚠️ Horse Racing System: NOT READY')"
 
 echo ""
 echo "✅ FRESH START COMPLETE!"

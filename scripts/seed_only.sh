@@ -31,55 +31,20 @@ echo "🔍 Checking container status..."
 docker-compose ps
 
 echo ""
+echo "🎮 Ensuring casino games are set up..."
+docker-compose exec web python seeding/seed_games.py
+
+echo ""
 echo "🌱 Running comprehensive seeding with positive balances..."
 docker-compose exec web python seeding/comprehensive_seed.py
 
 echo ""
 echo "🔍 Verifying wallet balances..."
-docker-compose exec web python -c "
-import sys
-sys.path.insert(0, '/app')
-from app import app, db
-from models import *
-with app.app_context():
-    total_wallets = Wallet.query.count()
-    negative_wallets = Wallet.query.filter(Wallet.balance < 0).count()
-    positive_wallets = total_wallets - negative_wallets
-    
-    print(f'💰 WALLET BALANCE STATUS:')
-    print(f'   Total wallets: {total_wallets}')
-    print(f'   Positive balances: {positive_wallets}')
-    print(f'   Negative balances: {negative_wallets}')
-    
-    if negative_wallets == 0:
-        print(f'   ✅ ALL WALLETS HAVE POSITIVE BALANCES!')
-    else:
-        print(f'   ⚠️  WARNING: {negative_wallets} wallets have negative balances')
-"
+docker-compose exec web python -c "import sys; sys.path.insert(0, '/app'); from app import app, db; from models import *; app.app_context().push(); total_wallets = Wallet.query.count(); negative_wallets = Wallet.query.filter(Wallet.balance < 0).count(); print(f'💰 Total wallets: {total_wallets}'); print(f'✅ ALL WALLETS HAVE POSITIVE BALANCES!' if negative_wallets == 0 else f'⚠️ WARNING: {negative_wallets} wallets have negative balances')"
 
 echo ""
 echo "📊 Final database status:"
-docker-compose exec web python -c "
-import sys
-sys.path.insert(0, '/app')
-from app import app, db
-from models import *
-with app.app_context():
-    print(f'👥 Users: {User.query.count()}')
-    print(f'💰 Wallets: {Wallet.query.count()}')
-    print(f'💳 Transactions: {Transaction.query.count()}')
-    print(f'🎮 Games: {Game.query.count()}')
-    print(f'🎯 Rounds: {Round.query.count()}')
-    print(f'🎲 Bets: {Bet.query.count()}')
-    print(f'😏 Sarcastic Templates: {SarcasTemp.query.count()}')
-    print(f'🐎 Horses: {Horse.query.count()}')
-    print(f'🏁 Horse Runners: {HorseRunner.query.count()}')
-    print(f'🏆 Horse Results: {HorseResult.query.count()}')
-    if Horse.query.count() > 0:
-        print('🎯 Horse Racing Ready!')
-    else:
-        print('⚠️  No horses found - run horse seeding script')
-"
+docker-compose exec web python -c "import sys; sys.path.insert(0, '/app'); from app import app, db; from models import *; app.app_context().push(); print(f'👥 Users: {User.query.count()}'); print(f'💰 Wallets: {Wallet.query.count()}'); print(f'💳 Transactions: {Transaction.query.count()}'); print(f'🎮 Games: {Game.query.count()}'); print(f'🎯 Rounds: {Round.query.count()}'); print(f'🎲 Bets: {Bet.query.count()}'); print(f'🐎 Horses: {Horse.query.count()}'); print(f'🏁 Horse Runners: {HorseRunner.query.count()}'); print(f'🏆 Horse Results: {HorseResult.query.count()}'); print('🎯 Horse Racing Ready!' if Horse.query.count() > 0 else '⚠️ No horses found - run horse seeding script')"
 
 echo ""
 echo "✅ SEEDING COMPLETE!"

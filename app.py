@@ -872,9 +872,9 @@ def admin_analytics():
                 COUNT(DISTINCT b.bet_id) as total_bets,
                 COALESCE(SUM(b.amount), 0) as total_wagered,
                 COALESCE(SUM(b.payout_amount), 0) as total_winnings,
-                COALESCE(SUM(b.payout_amount) - SUM(b.amount), 0) as net_profit,
-                COUNT(CASE WHEN b.payout_amount > b.amount THEN 1 END) as winning_bets,
-                AVG(b.amount) as avg_bet_size,
+                COALESCE(SUM(b.payout_amount), 0) - COALESCE(SUM(b.amount), 0) as net_profit,
+                COUNT(CASE WHEN COALESCE(b.payout_amount, 0) > COALESCE(b.amount, 0) THEN 1 END) as winning_bets,
+                COALESCE(AVG(b.amount), 0) as avg_bet_size,
                 COUNT(DISTINCT g.code) as games_played
             FROM users u
             LEFT JOIN bets b ON u.user_id = b.user_id
@@ -921,27 +921,27 @@ def admin_analytics():
                 COUNT(DISTINCT r.round_id) as total_rounds,
                 COUNT(DISTINCT b.user_id) as unique_players,
                 COUNT(b.bet_id) as total_bets,
-                SUM(b.amount) as total_wagered,
-                SUM(b.payout_amount) as total_paid_out,
-                SUM(b.amount) - SUM(b.payout_amount) as house_profit
+                COALESCE(SUM(b.amount), 0) as total_wagered,
+                COALESCE(SUM(b.payout_amount), 0) as total_paid_out,
+                COALESCE(SUM(b.amount), 0) - COALESCE(SUM(b.payout_amount), 0) as house_profit
             FROM games g
             LEFT JOIN rounds r ON g.game_id = r.game_id
             LEFT JOIN bets b ON r.round_id = b.round_id
             WHERE g.is_active = TRUE
             GROUP BY g.code, g.house_edge
         )
-        SELECT code, house_edge * 100 as theoretical_house_edge_pct,
+        SELECT code, COALESCE(house_edge * 100, 0) as theoretical_house_edge_pct,
                total_rounds, unique_players, total_bets,
-               ROUND(total_wagered, 2) as total_wagered,
-               ROUND(house_profit, 2) as house_profit,
+               ROUND(COALESCE(total_wagered, 0), 2) as total_wagered,
+               ROUND(COALESCE(house_profit, 0), 2) as house_profit,
                CASE 
-                   WHEN total_wagered > 0 
-                   THEN ROUND((house_profit / total_wagered) * 100, 3)
+                   WHEN COALESCE(total_wagered, 0) > 0 
+                   THEN ROUND((COALESCE(house_profit, 0) / COALESCE(total_wagered, 1)) * 100, 3)
                    ELSE 0 
                END as actual_house_edge_pct
         FROM game_stats
         WHERE total_bets > 0
-        ORDER BY house_profit DESC;
+        ORDER BY COALESCE(house_profit, 0) DESC;
         """
         
         result = db.session.execute(text(game_revenue_sql))
