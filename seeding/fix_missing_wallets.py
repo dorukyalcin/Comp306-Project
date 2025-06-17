@@ -39,7 +39,7 @@ def fix_missing_wallets():
                 # Create a default USD wallet with $1000 starting balance
                 wallet = Wallet(
                     user_id=user.user_id,
-                    currency='USD',
+                    currency='USD',  # USD is always the default currency
                     balance=Decimal('1000.00')
                 )
                 db.session.add(wallet)

@@ -8,6 +8,7 @@ echo "============================="
 echo "This will add comprehensive test data to your existing database:"
 echo "   • 12 Users (if database is empty)"
 echo "   • Multi-currency wallets"
+echo "   • ✅ ALL WALLET BALANCES GUARANTEED POSITIVE"
 echo "   • Realistic transactions"
 echo "   • 24 Racing horses with diverse characteristics"
 echo "   • Game rounds and betting history"
@@ -30,8 +31,31 @@ echo "🔍 Checking container status..."
 docker-compose ps
 
 echo ""
-echo "🌱 Running comprehensive seeding..."
+echo "🌱 Running comprehensive seeding with positive balances..."
 docker-compose exec web python seeding/comprehensive_seed.py
+
+echo ""
+echo "🔍 Verifying wallet balances..."
+docker-compose exec web python -c "
+import sys
+sys.path.insert(0, '/app')
+from app import app, db
+from models import *
+with app.app_context():
+    total_wallets = Wallet.query.count()
+    negative_wallets = Wallet.query.filter(Wallet.balance < 0).count()
+    positive_wallets = total_wallets - negative_wallets
+    
+    print(f'💰 WALLET BALANCE STATUS:')
+    print(f'   Total wallets: {total_wallets}')
+    print(f'   Positive balances: {positive_wallets}')
+    print(f'   Negative balances: {negative_wallets}')
+    
+    if negative_wallets == 0:
+        print(f'   ✅ ALL WALLETS HAVE POSITIVE BALANCES!')
+    else:
+        print(f'   ⚠️  WARNING: {negative_wallets} wallets have negative balances')
+"
 
 echo ""
 echo "📊 Final database status:"

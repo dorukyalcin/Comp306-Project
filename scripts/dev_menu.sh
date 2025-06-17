@@ -13,22 +13,24 @@ echo "3) Teardown           - Destroy everything (DANGER!)"
 echo ""
 echo "🌱 DATA MANAGEMENT:"
 echo "4) Seed Data Only     - Add comprehensive data to existing DB"
-echo "5) Quick View         - Show current database status"
+echo "5) Clean Seed         - Reset DB with guaranteed positive balances"
+echo "6) Balance Check      - Quick check of wallet balances"
+echo "7) Quick View         - Show current database status"
 echo ""
 echo "🐎 HORSE RACING:"
-echo "8) Horse Racing View  - Show detailed horse racing data"
-echo "9) Seed Horses Only   - Add only horse data to database"
+echo "10) Horse Racing View - Show detailed horse racing data"
+echo "11) Seed Horses Only  - Add only horse data to database"
 echo ""
 echo "🔧 DIRECT COMMANDS:"
-echo "6) View All Data      - Detailed database inspection"
-echo "7) Reset DB Only      - Reset database only (keep containers)"
+echo "8) View All Data      - Detailed database inspection"
+echo "9) Reset DB Only      - Reset database only (keep containers)"
 echo ""
 echo "🛠️  TROUBLESHOOTING:"
-echo "10) Fix Missing Wallets - Create wallets for users without them"
+echo "12) Fix Missing Wallets - Create wallets for users without them"
 echo ""
 echo "0) Exit"
 echo ""
-read -p "Enter your choice (0-10): " choice
+read -p "Enter your choice (0-12): " choice
 
 case $choice in
     1)
@@ -53,10 +55,20 @@ case $choice in
         ;;
     5)
         echo ""
+        echo "🧹 Running Clean Seed..."
+        ./scripts/clean_seed.sh
+        ;;
+    6)
+        echo ""
+        echo "💰 Running Balance Check..."
+        ./scripts/balance_check.sh
+        ;;
+    7)
+        echo ""
         echo "🔍 Running Quick View..."
         ./scripts/quick_view.sh
         ;;
-    6)
+    8)
         echo ""
         echo "📋 Viewing All Database Data..."
         if docker-compose ps | grep -q "Up"; then
@@ -65,7 +77,7 @@ case $choice in
             echo "❌ Containers not running. Start them first with option 1 or 2."
         fi
         ;;
-    7)
+    9)
         echo ""
         echo "🔄 Resetting Database Only..."
         if docker-compose ps | grep -q "Up"; then
@@ -76,7 +88,7 @@ case $choice in
             echo "❌ Containers not running. Start them first with option 1 or 2."
         fi
         ;;
-    8)
+    10)
         echo ""
         echo "🐎 Viewing Horse Racing Data..."
         if docker-compose ps | grep -q "Up"; then
@@ -124,7 +136,7 @@ with app.app_context():
             echo "❌ Containers not running. Start them first with option 1 or 2."
         fi
         ;;
-    9)
+    11)
         echo ""
         echo "🐎 Seeding Horses Only..."
         if docker-compose ps | grep -q "Up"; then
@@ -134,7 +146,7 @@ with app.app_context():
             echo "❌ Containers not running. Start them first with option 1 or 2."
         fi
         ;;
-    10)
+    12)
         echo ""
         echo "🛠️  Fixing Missing Wallets..."
         if docker-compose ps | grep -q "Up"; then
@@ -151,7 +163,7 @@ with app.app_context():
         ;;
     *)
         echo ""
-        echo "❌ Invalid choice. Please run again and select 0-10."
+        echo "❌ Invalid choice. Please run again and select 0-12."
         exit 1
         ;;
 esac

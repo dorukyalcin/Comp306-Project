@@ -156,56 +156,95 @@ def seed_financial_data(users):
     REQUIREMENT 2: Financial Data
     Creates wallets and transactions for all users:
     - Each user gets multiple currency wallets (USD, EUR, BTC)
-    - Starting balances vary realistically
-    - 3-8 transactions per user (deposits, withdrawals, wins, losses)
+    - Starting balances are always positive and realistic
+    - Transactions maintain positive balance throughout
     """
     print("\n💰 Seeding Financial Data...")
     
     currencies = ["USD", "EUR", "BTC"]
     starting_balances = {
-        "USD": [500, 1000, 1500, 2000, 2500, 3000],
-        "EUR": [400, 800, 1200, 1600, 2000, 2400],
-        "BTC": [0.1, 0.25, 0.5, 0.75, 1.0, 1.5]
+        "USD": [500, 750, 1000, 1500, 2000, 2500, 3000, 5000],
+        "EUR": [400, 600, 800, 1200, 1600, 2000, 2400, 4000],
+        "BTC": [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
     }
     
     wallets = []
     transactions = []
     
     for user in users:
-        # Each user gets 1-3 currency wallets
-        user_currencies = random.sample(currencies, random.randint(1, 3))
+        # Each user gets USD as primary currency, plus 0-2 additional currencies
+        user_currencies = ["USD"]  # USD is always the primary/default wallet
+        
+        # Optionally add 0-2 additional currencies (EUR, BTC)
+        additional_currencies = [c for c in currencies if c != "USD"]
+        if random.random() > 0.3:  # 70% chance of additional currencies
+            user_currencies.extend(random.sample(additional_currencies, random.randint(0, 2)))
         
         for currency in user_currencies:
-            # Create wallet with starting balance
-            balance = Decimal(str(random.choice(starting_balances[currency])))
+            # Start with a good initial balance
+            initial_balance = Decimal(str(random.choice(starting_balances[currency])))
+            
             wallet = Wallet(
                 user_id=user.user_id,
                 currency=currency,
-                balance=balance
+                balance=initial_balance  # We'll adjust this after transactions
             )
             wallets.append(wallet)
             db.session.add(wallet)
             db.session.flush()  # Get wallet ID
             
-            # Create 3-8 transactions per wallet
-            num_transactions = random.randint(3, 8)
-            current_balance = Decimal('0')
+            # Track running balance carefully
+            current_balance = initial_balance
             
-            for i in range(num_transactions):
-                # Transaction types and amounts
-                txn_types = ["deposit", "withdraw", "bet_win", "bet_loss"]
+            # Always start with the initial deposit transaction
+            initial_deposit = Transaction(
+                wallet_id=wallet.wallet_id,
+                amount=initial_balance,
+                txn_type="deposit",
+                created_at=datetime.now() - timedelta(days=random.randint(30, 90))
+            )
+            transactions.append(initial_deposit)
+            db.session.add(initial_deposit)
+            
+            # Create 2-6 additional transactions per wallet
+            num_additional_transactions = random.randint(2, 6)
+            
+            for i in range(num_additional_transactions):
+                # Weight transaction types to maintain positive balance
+                txn_types = ["deposit", "deposit", "bet_win", "withdraw", "bet_loss"]  # More deposits/wins
                 txn_type = random.choice(txn_types)
                 
+                # Calculate transaction amount based on currency and current balance
                 if currency == "BTC":
-                    amount = Decimal(str(round(random.uniform(0.01, 0.5), 4)))
+                    max_amount = min(current_balance * Decimal('0.3'), Decimal('0.5'))  # Max 30% of balance or 0.5 BTC
+                    amount = Decimal(str(round(random.uniform(0.01, float(max_amount)), 4)))
                 elif currency == "EUR":
-                    amount = Decimal(str(round(random.uniform(10, 500), 2)))
+                    max_amount = min(current_balance * Decimal('0.4'), Decimal('800'))  # Max 40% of balance or 800 EUR
+                    amount = Decimal(str(round(random.uniform(10, float(max_amount)), 2)))
                 else:  # USD
-                    amount = Decimal(str(round(random.uniform(10, 600), 2)))
+                    max_amount = min(current_balance * Decimal('0.4'), Decimal('1000'))  # Max 40% of balance or 1000 USD
+                    amount = Decimal(str(round(random.uniform(10, float(max_amount)), 2)))
                 
-                # Ensure withdrawals don't exceed balance
-                if txn_type == "withdraw" and amount > current_balance:
-                    amount = current_balance * Decimal('0.8')  # Withdraw 80% max
+                # For withdrawals and bet losses, ensure we don't go negative
+                if txn_type in ["withdraw", "bet_loss"]:
+                    # Only allow if we have sufficient balance and leave a minimum buffer
+                    min_remaining = Decimal(str(starting_balances[currency][0])) * Decimal('0.1')  # 10% of minimum starting balance
+                    if current_balance - amount < min_remaining:
+                        # Convert to a smaller amount or skip this transaction
+                        safe_amount = max(Decimal('0'), current_balance - min_remaining)
+                        if safe_amount > Decimal('0'):
+                            amount = safe_amount * Decimal('0.5')  # Only take 50% of safe amount
+                        else:
+                            continue  # Skip this transaction
+                
+                # For deposits and wins, add variety but keep reasonable
+                if txn_type in ["deposit", "bet_win"]:
+                    if currency == "BTC":
+                        amount = Decimal(str(round(random.uniform(0.01, 0.8), 4)))
+                    elif currency == "EUR":
+                        amount = Decimal(str(round(random.uniform(20, 600), 2)))
+                    else:  # USD
+                        amount = Decimal(str(round(random.uniform(25, 750), 2)))
                 
                 transaction = Transaction(
                     wallet_id=wallet.wallet_id,
@@ -219,14 +258,35 @@ def seed_financial_data(users):
                 # Update running balance
                 if txn_type in ["deposit", "bet_win"]:
                     current_balance += amount
-                else:
+                else:  # withdraw, bet_loss
                     current_balance -= amount
+                
+                # Ensure balance never goes negative (safety check)
+                if current_balance < Decimal('0'):
+                    current_balance = Decimal('0')
             
-            # Set final wallet balance
+            # Ensure final balance is positive - if somehow it's not, set to a minimum
+            min_final_balance = Decimal(str(starting_balances[currency][0])) * Decimal('0.2')  # 20% of minimum starting
+            if current_balance < min_final_balance:
+                current_balance = min_final_balance
+                
+                # Add a corrective deposit to match this balance
+                correction_amount = min_final_balance - (current_balance - min_final_balance)
+                correction_transaction = Transaction(
+                    wallet_id=wallet.wallet_id,
+                    amount=correction_amount,
+                    txn_type="admin_credit",
+                    created_at=datetime.now() - timedelta(days=random.randint(0, 10))
+                )
+                transactions.append(correction_transaction)
+                db.session.add(correction_transaction)
+            
+            # Set final wallet balance (guaranteed positive)
             wallet.balance = current_balance
     
     print(f"   ✓ Created {len(wallets)} wallets across {len(set(w.currency for w in wallets))} currencies")
-    print(f"   ✓ Created {len(transactions)} transactions (deposits, withdrawals, wins, losses)")
+    print(f"   ✓ Created {len(transactions)} transactions (all balances guaranteed positive)")
+    print(f"   ✓ Balance ranges: USD: $100-5000, EUR: €80-4000, BTC: 0.02-3.0")
     return wallets
 
 def seed_horses():

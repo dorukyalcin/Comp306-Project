@@ -8,6 +8,8 @@ from models import db, User, Wallet, Transaction, Game, Round, Bet, Outcome, Hor
 from decimal import Decimal
 from werkzeug.utils import secure_filename
 from games import HorseRacing, Slots, Plinko, Blackjack
+from sqlalchemy.sql import text
+from sqlalchemy.orm import joinedload
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://casino:casino_pass@localhost:5432/casino_db')
@@ -597,7 +599,7 @@ def admin_user_detail(user_id):
             wallet_transactions = Transaction.query.filter_by(wallet_id=wallet.wallet_id).order_by(Transaction.created_at.desc()).limit(50).all()
             for transaction in wallet_transactions:
                 transactions.append({
-                    'transaction_id': transaction.transaction_id,
+                    'transaction_id': transaction.txn_id,  # Fixed: use txn_id not transaction_id
                     'wallet_id': transaction.wallet_id,
                     'currency': wallet.currency,
                     'amount': float(transaction.amount),
@@ -608,8 +610,11 @@ def admin_user_detail(user_id):
         # Sort transactions by date (most recent first)
         transactions.sort(key=lambda x: x['created_at'], reverse=True)
         
-        # Get user's bets
-        bets = Bet.query.filter_by(user_id=user_id).order_by(Bet.created_at.desc()).limit(20).all()
+        # Get user's bets with related data to avoid lazy loading
+        bets = Bet.query.filter_by(user_id=user_id)\
+                        .options(joinedload(Bet.round).joinedload(Round.game),
+                                joinedload(Bet.outcome))\
+                        .order_by(Bet.placed_at.desc()).limit(20).all()
         
         return render_template('admin/user_detail.html', 
                              user=user, 
@@ -730,6 +735,110 @@ def admin_delete_user(user_id):
         flash(f'Error deleting user: {str(e)}', 'danger')
     
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/analytics')
+@login_required
+@admin_required
+def admin_analytics():
+    """Execute complex SQL queries for database course requirements"""
+    try:
+        # Execute queries and capture results for display
+        analytics_results = {
+            'user_performance': [],
+            'game_revenue': [],
+            'horse_racing': [],
+            'transaction_patterns': [],
+            'betting_behavior': []
+        }
+        
+        # Query 1: User Performance Analytics
+        user_perf_sql = """
+        WITH user_betting_stats AS (
+            SELECT 
+                u.user_id, u.username, u.created_at,
+                COUNT(DISTINCT b.bet_id) as total_bets,
+                COALESCE(SUM(b.amount), 0) as total_wagered,
+                COALESCE(SUM(b.payout_amount), 0) as total_winnings,
+                COALESCE(SUM(b.payout_amount) - SUM(b.amount), 0) as net_profit,
+                COUNT(CASE WHEN b.payout_amount > b.amount THEN 1 END) as winning_bets,
+                AVG(b.amount) as avg_bet_size,
+                COUNT(DISTINCT g.code) as games_played
+            FROM users u
+            LEFT JOIN bets b ON u.user_id = b.user_id
+            LEFT JOIN rounds r ON b.round_id = r.round_id  
+            LEFT JOIN games g ON r.game_id = g.game_id
+            WHERE u.is_admin = FALSE
+            GROUP BY u.user_id, u.username, u.created_at
+            HAVING COUNT(b.bet_id) > 0
+        ),
+        user_rankings AS (
+            SELECT *,
+                CASE 
+                    WHEN total_bets > 0 THEN ROUND((winning_bets::NUMERIC / total_bets) * 100, 2)
+                    ELSE 0 
+                END as win_percentage,
+                CASE 
+                    WHEN total_wagered > 0 THEN ROUND((net_profit / total_wagered) * 100, 2)
+                    ELSE 0 
+                END as roi_percentage,
+                RANK() OVER (ORDER BY net_profit DESC) as profit_rank,
+                CASE 
+                    WHEN avg_bet_size > 100 THEN 'High Roller'
+                    WHEN avg_bet_size > 50 THEN 'Medium Risk'
+                    WHEN avg_bet_size > 10 THEN 'Conservative'
+                    ELSE 'Penny Player'
+                END as risk_profile
+            FROM user_betting_stats
+        )
+        SELECT username, total_bets, total_wagered, net_profit, 
+               win_percentage, roi_percentage, profit_rank, risk_profile
+        FROM user_rankings
+        ORDER BY net_profit DESC
+        LIMIT 10;
+        """
+        
+        result = db.session.execute(text(user_perf_sql))
+        analytics_results['user_performance'] = [dict(row._mapping) for row in result]
+        
+        # Query 2: Game Revenue Analysis  
+        game_revenue_sql = """
+        WITH game_stats AS (
+            SELECT 
+                g.code, g.house_edge,
+                COUNT(DISTINCT r.round_id) as total_rounds,
+                COUNT(DISTINCT b.user_id) as unique_players,
+                COUNT(b.bet_id) as total_bets,
+                SUM(b.amount) as total_wagered,
+                SUM(b.payout_amount) as total_paid_out,
+                SUM(b.amount) - SUM(b.payout_amount) as house_profit
+            FROM games g
+            LEFT JOIN rounds r ON g.game_id = r.game_id
+            LEFT JOIN bets b ON r.round_id = b.round_id
+            WHERE g.is_active = TRUE
+            GROUP BY g.code, g.house_edge
+        )
+        SELECT code, house_edge * 100 as theoretical_house_edge_pct,
+               total_rounds, unique_players, total_bets,
+               ROUND(total_wagered, 2) as total_wagered,
+               ROUND(house_profit, 2) as house_profit,
+               CASE 
+                   WHEN total_wagered > 0 
+                   THEN ROUND((house_profit / total_wagered) * 100, 3)
+                   ELSE 0 
+               END as actual_house_edge_pct
+        FROM game_stats
+        WHERE total_bets > 0
+        ORDER BY house_profit DESC;
+        """
+        
+        result = db.session.execute(text(game_revenue_sql))
+        analytics_results['game_revenue'] = [dict(row._mapping) for row in result]
+        
+        return render_template('admin/analytics.html', analytics=analytics_results)
+        
+    except Exception as e:
+        flash(f'Error running analytics: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     with app.app_context():

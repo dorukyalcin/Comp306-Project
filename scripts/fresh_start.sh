@@ -8,6 +8,7 @@ echo "===================================================="
 echo "🌱 This will create a fresh site with comprehensive test data:"
 echo "   ✅ 12 Users (2 admins, 10 regular)"
 echo "   ✅ Multi-currency wallets (USD, EUR, BTC)"
+echo "   ✅ ALL WALLET BALANCES GUARANTEED POSITIVE"
 echo "   ✅ 140+ realistic transactions"
 echo "   ✅ 24 Racing horses with diverse characteristics"
 echo "   ✅ 25 game rounds with betting history"
@@ -33,8 +34,10 @@ echo "⏳ Step 2: Waiting for services to be ready..."
 sleep 5
 
 echo ""
-echo "🌱 Step 3: Running comprehensive database seeding..."
-docker-compose exec web python seeding/startup_with_seed.py
+echo "🌱 Step 3: Running clean database seeding with positive balances..."
+docker-compose exec web python seeding/clean_seed.py <<EOF
+yes
+EOF
 
 echo ""
 echo "🔍 Step 4: Verifying database contents..."

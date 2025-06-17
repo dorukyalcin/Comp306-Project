@@ -168,8 +168,8 @@
                             <tbody>
                                 {% for bet in bets %}
                                 <tr>
-                                    <td>{{ bet.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    <td>{{ bet.game.name if bet.game else 'Unknown' }}</td>
+                                    <td>{{ bet.placed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ bet.round.game.code if bet.round and bet.round.game else 'Unknown' }}</td>
                                     <td>{{ bet.amount|round(2) }}</td>
                                     <td>
                                         {% if bet.outcome %}
