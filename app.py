@@ -24,6 +24,15 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('Access denied. Admin privileges required.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -520,6 +529,193 @@ def api_blackjack_action():
         
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+# Admin Routes
+@app.route('/admin')
+@login_required
+@admin_required
+def admin_dashboard():
+    """Admin dashboard showing all users and their balances"""
+    try:
+        # Get all users with their wallets
+        users = User.query.all()
+        
+        # Prepare user data with wallet information
+        user_data = []
+        for user in users:
+            user_info = {
+                'user_id': user.user_id,
+                'username': user.username,
+                'email': user.email,
+                'is_admin': user.is_admin,
+                'created_at': user.created_at,
+                'wallets': []
+            }
+            
+            # Get all wallets for this user
+            for wallet in user.wallets:
+                wallet_info = {
+                    'wallet_id': wallet.wallet_id,
+                    'currency': wallet.currency,
+                    'balance': float(wallet.balance)
+                }
+                user_info['wallets'].append(wallet_info)
+            
+            user_data.append(user_info)
+        
+        return render_template('admin/dashboard.html', users=user_data)
+    
+    except Exception as e:
+        flash(f'Error loading admin dashboard: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/admin/user/<int:user_id>')
+@login_required
+@admin_required
+def admin_user_detail(user_id):
+    """View detailed information about a specific user"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Get user's transactions
+        transactions = []
+        for wallet in user.wallets:
+            wallet_transactions = Transaction.query.filter_by(wallet_id=wallet.wallet_id).order_by(Transaction.created_at.desc()).limit(50).all()
+            for transaction in wallet_transactions:
+                transactions.append({
+                    'transaction_id': transaction.transaction_id,
+                    'wallet_id': transaction.wallet_id,
+                    'currency': wallet.currency,
+                    'amount': float(transaction.amount),
+                    'txn_type': transaction.txn_type,
+                    'created_at': transaction.created_at
+                })
+        
+        # Sort transactions by date (most recent first)
+        transactions.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        # Get user's bets
+        bets = Bet.query.filter_by(user_id=user_id).order_by(Bet.created_at.desc()).limit(20).all()
+        
+        return render_template('admin/user_detail.html', 
+                             user=user, 
+                             transactions=transactions[:50],  # Limit to 50 most recent
+                             bets=bets)
+    
+    except Exception as e:
+        flash(f'Error loading user details: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/user/<int:user_id>/balance', methods=['POST'])
+@login_required
+@admin_required
+def admin_modify_balance(user_id):
+    """Modify user's wallet balance"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        wallet_id = request.form.get('wallet_id')
+        action = request.form.get('action')  # 'add' or 'subtract'
+        amount_str = request.form.get('amount', '0')
+        reason = request.form.get('reason', 'Admin adjustment')
+        
+        # Validate inputs
+        try:
+            amount = Decimal(amount_str)
+        except (ValueError, TypeError):
+            flash('Invalid amount format.', 'danger')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        if amount <= 0:
+            flash('Amount must be greater than 0.', 'danger')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # Get the wallet
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=user_id).first()
+        if not wallet:
+            flash('Wallet not found.', 'danger')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # Modify balance
+        old_balance = wallet.balance
+        if action == 'add':
+            wallet.balance += amount
+            txn_type = 'admin_credit'
+            flash_message = f'Added {amount:.2f} {wallet.currency} to {user.username}\'s wallet'
+        elif action == 'subtract':
+            if amount > wallet.balance:
+                flash('Cannot subtract more than current balance.', 'danger')
+                return redirect(url_for('admin_user_detail', user_id=user_id))
+            wallet.balance -= amount
+            txn_type = 'admin_debit'
+            flash_message = f'Subtracted {amount:.2f} {wallet.currency} from {user.username}\'s wallet'
+        else:
+            flash('Invalid action.', 'danger')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # Create transaction record
+        transaction = Transaction(
+            wallet_id=wallet.wallet_id,
+            amount=amount,
+            txn_type=txn_type
+        )
+        db.session.add(transaction)
+        
+        # Commit changes
+        db.session.commit()
+        
+        flash(f'{flash_message}. Balance changed from {old_balance:.2f} to {wallet.balance:.2f}. Reason: {reason}', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error modifying balance: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    """Delete a user and all associated data"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Safety checks
+        if user.user_id == current_user.user_id:
+            flash('You cannot delete your own account.', 'danger')
+            return redirect(url_for('admin_dashboard'))
+        
+        if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
+            flash('Cannot delete the last admin user.', 'danger')
+            return redirect(url_for('admin_dashboard'))
+        
+        username = user.username  # Store for flash message
+        
+        # Delete user and cascade delete related data
+        # Note: The foreign key relationships should handle cascade deletion
+        # But let's be explicit about what we're deleting
+        
+        # Delete user's bets (this will also delete outcomes due to cascade)
+        Bet.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user's transactions (via wallets)
+        for wallet in user.wallets:
+            Transaction.query.filter_by(wallet_id=wallet.wallet_id).delete()
+        
+        # Delete user's wallets
+        Wallet.query.filter_by(user_id=user_id).delete()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        flash(f'User "{username}" and all associated data have been permanently deleted.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting user: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     with app.app_context():
