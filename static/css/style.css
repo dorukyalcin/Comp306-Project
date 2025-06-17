@@ -77,4 +77,74 @@ body {
 .transaction-forms .card:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+/* Wallet Dropdown Navbar Styles */
+.navbar .wallet-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.navbar .dropdown-menu {
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    border: 1px solid #444;
+    min-width: 200px;
+}
+
+.navbar .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    margin: 2px 5px;
+}
+
+.navbar .dropdown-item:hover {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    transform: translateX(3px);
+}
+
+.navbar .dropdown-item i.fa-check {
+    margin-left: auto;
+}
+
+.navbar .dropdown-divider {
+    border-top: 1px solid #555;
+    margin: 5px 0;
+}
+
+/* Active wallet indicator */
+.navbar .nav-link.active-wallet {
+    background: rgba(0, 123, 255, 0.1);
+    border-radius: 5px;
+}
+
+/* Wallet indicator animation */
+.wallet-info span {
+    transition: all 0.3s ease;
+}
+
+.wallet-info:hover span {
+    color: #ffd700 !important;
+}
+
+/* Currency icons styling */
+.currency-icon {
+    font-size: 1.1em;
+    margin-right: 3px;
+}
+
+/* Mobile responsive wallet dropdown */
+@media (max-width: 768px) {
+    .navbar .dropdown-menu {
+        min-width: 180px;
+        left: -50px !important;
+    }
+    
+    .wallet-info span {
+        font-size: 0.9em;
+    }
 } 

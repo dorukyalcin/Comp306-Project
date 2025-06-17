@@ -621,7 +621,8 @@ async function dealNewHand() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                amount: betAmount
+                amount: betAmount,
+                wallet_id: {{ wallet.wallet_id }}
             })
         });
         

@@ -527,7 +527,8 @@ function placeBet() {
         body: JSON.stringify({
             horse_id: selectedHorse,
             amount: parseFloat(betAmount),
-            bet_type: betType
+            bet_type: betType,
+            wallet_id: {{ wallet.wallet_id }}
         })
     })
     .then(response => response.json())

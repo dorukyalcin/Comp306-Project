@@ -269,7 +269,7 @@ class Blackjack:
             'dealer_bust': dealer_bust
         }
     
-    def place_bet(self, user_id, bet_amount):
+    def place_bet(self, user_id, bet_amount, wallet_id=None):
         """Place a bet and start a new hand"""
         try:
             if bet_amount <= 0:
@@ -295,12 +295,19 @@ class Blackjack:
                     return result
                 active_round = self.get_active_round()
             
-            # Get user's primary wallet
+            # Get user's wallet
             user = User.query.get(user_id)
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            wallet = user.get_primary_wallet()
+            # Use the specified wallet or primary wallet
+            if wallet_id:
+                wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=user_id).first()
+                if not wallet:
+                    return {'success': False, 'message': 'Specified wallet not found'}
+            else:
+                wallet = user.get_primary_wallet()
+            
             if wallet.balance < bet_amount:
                 return {'success': False, 'message': 'Insufficient funds'}
             
@@ -371,32 +378,34 @@ class Blackjack:
                 # Process wallet transactions
                 wallet.balance -= bet_amount
                 
+                # Create bet transaction (money going out of wallet)
+                bet_transaction = Transaction(
+                    wallet_id=wallet.wallet_id,
+                    amount=bet_amount,
+                    txn_type='bet'
+                )
+                db.session.add(bet_transaction)
+                
                 if result['payout_multiplier'] > 0:
                     win_amount = bet_amount * Decimal(str(result['payout_multiplier']))
                     wallet.balance += win_amount
                     
-                    # Create win transaction
+                    # Create win transaction (money coming into wallet)
                     win_transaction = Transaction(
                         wallet_id=wallet.wallet_id,
                         amount=win_amount,
-                        txn_type='bet_win'
+                        txn_type='win'
                     )
                     db.session.add(win_transaction)
-                
-                # Create bet transaction
-                bet_transaction = Transaction(
-                    wallet_id=wallet.wallet_id,
-                    amount=-bet_amount,
-                    txn_type='bet_loss'
-                )
-                db.session.add(bet_transaction)
             else:
                 # Deduct bet amount for ongoing game
                 wallet.balance -= bet_amount
+                
+                # Create bet transaction (money going out of wallet)
                 bet_transaction = Transaction(
                     wallet_id=wallet.wallet_id,
-                    amount=-bet_amount,
-                    txn_type='bet_loss'
+                    amount=bet_amount,
+                    txn_type='bet'
                 )
                 db.session.add(bet_transaction)
             
@@ -557,7 +566,7 @@ class Blackjack:
                 win_transaction = Transaction(
                     wallet_id=wallet.wallet_id,
                     amount=win_amount,
-                    txn_type='bet_win'
+                    txn_type='win'
                 )
                 db.session.add(win_transaction)
             

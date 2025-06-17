@@ -144,7 +144,7 @@ class HorseRacing:
             db.session.rollback()
             return {'success': False, 'message': f'Error starting race: {str(e)}'}
     
-    def place_bet(self, user_id, horse_id, bet_amount, bet_type='win'):
+    def place_bet(self, user_id, horse_id, bet_amount, bet_type='win', wallet_id=None):
         """
         Place a bet on a horse
         
@@ -153,6 +153,7 @@ class HorseRacing:
             horse_id (int): ID of the horse to bet on
             bet_amount (Decimal): Amount to bet
             bet_type (str): Type of bet ('win', 'place', 'show')
+            wallet_id (int): Optional wallet ID to use for betting
             
         Returns:
             dict: Success status and message
@@ -188,7 +189,13 @@ class HorseRacing:
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            wallet = user.get_primary_wallet()
+            # Use the specified wallet or primary wallet
+            if wallet_id:
+                wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=user_id).first()
+                if not wallet:
+                    return {'success': False, 'message': 'Specified wallet not found'}
+            else:
+                wallet = user.get_primary_wallet()
             
             # Check if user has enough balance
             if wallet.balance < bet_amount:
@@ -206,7 +213,7 @@ class HorseRacing:
             transaction = Transaction(
                 wallet_id=wallet.wallet_id,
                 amount=bet_amount,
-                txn_type='bet_placed'
+                txn_type='bet'
             )
             db.session.add(transaction)
             
@@ -422,7 +429,7 @@ class HorseRacing:
                     transaction = Transaction(
                         wallet_id=wallet.wallet_id,
                         amount=payout,
-                        txn_type='bet_win'
+                        txn_type='win'
                     )
                     db.session.add(transaction)
                     

@@ -576,7 +576,7 @@ async function dropBall() {
         
         // Show result
         displayResult(apiResult, ballId);
-        updateWalletBalance(apiResult);
+        updateLocalWalletBalance(apiResult);
         
         // Clean up ball after showing result
         setTimeout(() => {
@@ -621,7 +621,8 @@ async function placeBetAPI(betAmount) {
         },
         body: JSON.stringify({
             amount: betAmount,
-            risk_level: getCurrentRiskLevel()
+            risk_level: getCurrentRiskLevel(),
+            wallet_id: {{ wallet.wallet_id }}
         })
     });
     
@@ -809,7 +810,7 @@ function showErrorResult(message, ballId) {
     }, ballId);
 }
 
-function updateWalletBalance(result) {
+function updateLocalWalletBalance(result) {
     if (result.success && result.wallet_balance !== undefined) {
         const balanceDisplay = document.getElementById('walletBalance');
         const currency = result.wallet_currency || walletCurrency || 'USD';
@@ -822,12 +823,15 @@ function updateWalletBalance(result) {
             default: symbol = '$'; break;
         }
         
-        balanceDisplay.textContent = symbol + result.wallet_balance.toFixed(2);
+        balanceDisplay.textContent = symbol + parseFloat(result.wallet_balance).toFixed(2);
         
-        // Also update navbar
-        const navWalletDisplay = document.querySelector('.nav-link i.fa-coins + span');
-        if (navWalletDisplay) {
-            navWalletDisplay.textContent = symbol + result.wallet_balance.toFixed(2) + ' ' + currency;
+        // Call the global updateWalletBalance function to update navbar
+        if (typeof window.updateWalletBalance === 'function') {
+            window.updateWalletBalance(
+                parseFloat(result.wallet_balance), 
+                currency, 
+                {{ wallet.wallet_id if wallet else 'null' }}
+            );
         }
     }
 }

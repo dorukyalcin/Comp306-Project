@@ -176,7 +176,7 @@ class Plinko:
             'risk_levels': list(self.risk_multipliers.keys())
         }
     
-    def place_bet(self, user_id, bet_amount, risk_level='high'):
+    def place_bet(self, user_id, bet_amount, risk_level='high', wallet_id=None):
         """Place a bet and drop the ball"""
         try:
             if bet_amount <= 0:
@@ -202,13 +202,19 @@ class Plinko:
                     return result
                 active_round = self.get_active_round()
             
-            # Get user's primary wallet (any currency)
+            # Get user's wallet
             user = User.query.get(user_id)
             if not user or not user.wallets:
                 return {'success': False, 'message': 'User wallet not found'}
             
-            # Use the primary wallet (prioritizes USD, supports all currencies)
-            wallet = user.get_primary_wallet()
+            # Use the specified wallet or primary wallet
+            if wallet_id:
+                wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=user_id).first()
+                if not wallet:
+                    return {'success': False, 'message': 'Specified wallet not found'}
+            else:
+                wallet = user.get_primary_wallet()
+            
             if wallet.balance < bet_amount:
                 return {'success': False, 'message': 'Insufficient funds'}
             
@@ -238,28 +244,30 @@ class Plinko:
             )
             db.session.add(outcome)
             
-            # Update wallet
+            # Update wallet balance
             wallet.balance -= bet_amount
+            
+            # Create bet transaction (money going out of wallet)
+            bet_transaction = Transaction(
+                wallet_id=wallet.wallet_id,
+                amount=bet_amount,
+                txn_type='bet'
+            )
+            db.session.add(bet_transaction)
+            
+            # Handle winnings if any
             win_amount = Decimal('0')
             if ball_result['multiplier'] > 0:
                 win_amount = bet_amount * Decimal(str(ball_result['multiplier']))
                 wallet.balance += win_amount
                 
-                # Create win transaction
+                # Create win transaction (money coming into wallet)
                 win_transaction = Transaction(
                     wallet_id=wallet.wallet_id,
                     amount=win_amount,
-                    txn_type='bet_win'
+                    txn_type='win'
                 )
                 db.session.add(win_transaction)
-            
-            # Create bet transaction
-            bet_transaction = Transaction(
-                wallet_id=wallet.wallet_id,
-                amount=-bet_amount,
-                txn_type='bet_loss'
-            )
-            db.session.add(bet_transaction)
             
             db.session.commit()
             

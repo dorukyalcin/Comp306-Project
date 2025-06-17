@@ -109,6 +109,25 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
+@app.route('/api/wallet/<int:wallet_id>/balance')
+@login_required
+def get_wallet_balance(wallet_id):
+    """API endpoint to get current wallet balance"""
+    try:
+        # Get the wallet
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+        if not wallet:
+            return jsonify({'success': False, 'error': 'Wallet not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'balance': float(wallet.balance),
+            'currency': wallet.currency,
+            'wallet_id': wallet.wallet_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
@@ -273,8 +292,9 @@ def wallet(wallet_id=None):
         return redirect(url_for('index'))
 
 @app.route('/horse-racing')
+@app.route('/horse-racing/<int:wallet_id>')
 @login_required
-def horse_racing():
+def horse_racing(wallet_id=None):
     """Main horse racing game page"""
     hr = HorseRacing()
     
@@ -284,8 +304,15 @@ def horse_racing():
         flash(validation['message'], 'danger')
         return redirect(url_for('index'))
     
-    # Get user's wallet
-    wallet = current_user.get_primary_wallet() if current_user.wallets else None
+    # Get the specific wallet or default to primary wallet
+    if wallet_id:
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+        if not wallet:
+            flash('Wallet not found.', 'danger')
+            return redirect(url_for('horse_racing'))
+    else:
+        wallet = current_user.get_primary_wallet() if current_user.wallets else None
+    
     if not wallet:
         flash('No wallet found. Please contact support.', 'danger')
         return redirect(url_for('index'))
@@ -303,6 +330,7 @@ def horse_racing():
     return render_template('horse_racing.html', 
                          game=horse_game, 
                          wallet=wallet,
+                         all_wallets=current_user.wallets,
                          active_round=active_round,
                          recent_rounds=recent_rounds,
                          horses_dict=horses_dict)
@@ -324,9 +352,20 @@ def place_horse_bet():
     horse_id = data.get('horse_id')
     bet_amount = Decimal(str(data.get('amount', 0)))
     bet_type = data.get('bet_type', 'win')
+    wallet_id = data.get('wallet_id')
+    
+    # Get the specified wallet or default to primary wallet
+    if wallet_id:
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+        if not wallet:
+            return jsonify({'success': False, 'message': 'Wallet not found'})
+    else:
+        wallet = current_user.get_primary_wallet()
+        if not wallet:
+            return jsonify({'success': False, 'message': 'No wallet found'})
     
     hr = HorseRacing()
-    result = hr.place_bet(current_user.user_id, horse_id, bet_amount, bet_type)
+    result = hr.place_bet(current_user.user_id, horse_id, bet_amount, bet_type, wallet_id=wallet.wallet_id)
     return jsonify(result)
 
 @app.route('/horse-racing/run-race', methods=['POST'])
@@ -362,8 +401,9 @@ def horse_info():
     return jsonify(result)
 
 @app.route('/slots')
+@app.route('/slots/<int:wallet_id>')
 @login_required
-def slots():
+def slots(wallet_id=None):
     """Main slot machine game page"""
     slots_game = Slots()
     
@@ -373,8 +413,15 @@ def slots():
         flash(validation['message'], 'danger')
         return redirect(url_for('index'))
     
-    # Get user's primary wallet (any currency)
-    wallet = current_user.get_primary_wallet() if current_user.wallets else None
+    # Get the specific wallet or default to primary wallet
+    if wallet_id:
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+        if not wallet:
+            flash('Wallet not found.', 'danger')
+            return redirect(url_for('slots'))
+    else:
+        wallet = current_user.get_primary_wallet() if current_user.wallets else None
+    
     if not wallet:
         flash('No wallet found. Please contact support.', 'danger')
         return redirect(url_for('index'))
@@ -387,6 +434,7 @@ def slots():
     return render_template('slots.html', 
                          game=game, 
                          wallet=wallet,
+                         all_wallets=current_user.wallets,
                          active_round=active_round,
                          symbols=symbols)
 
@@ -397,22 +445,28 @@ def slots_bet():
     try:
         data = request.get_json()
         bet_amount = Decimal(str(data.get('amount', 0)))
+        wallet_id = data.get('wallet_id')
         
         if bet_amount <= 0:
             return jsonify({'success': False, 'message': 'Invalid bet amount'})
         
+        # Get the specified wallet or default to primary wallet
+        if wallet_id:
+            wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+            if not wallet:
+                return jsonify({'success': False, 'message': 'Wallet not found'})
+        else:
+            wallet = current_user.get_primary_wallet() if current_user.wallets else None
+            if not wallet:
+                return jsonify({'success': False, 'message': 'No wallet found'})
+        
         slots_game = Slots()
-        result = slots_game.place_bet(current_user.user_id, bet_amount)
+        result = slots_game.place_bet(current_user.user_id, bet_amount, wallet_id=wallet.wallet_id)
         
         if result['success']:
-            # Update wallet balance in response - use primary wallet
-            wallet = current_user.get_primary_wallet() if current_user.wallets else None
-            if wallet:
-                result['wallet_balance'] = float(wallet.balance)
-                result['wallet_currency'] = wallet.currency
-            else:
-                result['wallet_balance'] = 0.0
-                result['wallet_currency'] = 'USD'
+            # Update wallet balance in response - use the specific wallet
+            result['wallet_balance'] = float(wallet.balance)
+            result['wallet_currency'] = wallet.currency
         
         return jsonify(result)
         
@@ -420,8 +474,9 @@ def slots_bet():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/plinko')
+@app.route('/plinko/<int:wallet_id>')
 @login_required
-def plinko():
+def plinko(wallet_id=None):
     """Plinko game page"""
     try:
         from games.plinko import Plinko
@@ -431,15 +486,23 @@ def plinko():
         # Get default board data (high risk)
         board_data = plinko_game.get_board_data('high')
         
-        # Get user's primary wallet
-        wallet = current_user.get_primary_wallet() if current_user.wallets else None
+        # Get the specific wallet or default to primary wallet
+        if wallet_id:
+            wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+            if not wallet:
+                flash('Wallet not found.', 'danger')
+                return redirect(url_for('plinko'))
+        else:
+            wallet = current_user.get_primary_wallet() if current_user.wallets else None
+        
         if not wallet:
             flash('No wallet found. Please contact support.', 'error')
             return redirect(url_for('index'))
         
         return render_template('plinko.html', 
                              board_data=board_data, 
-                             wallet=wallet)
+                             wallet=wallet,
+                             all_wallets=current_user.wallets)
         
     except Exception as e:
         flash(f'Error loading Plinko: {str(e)}', 'error')
@@ -455,6 +518,7 @@ def api_plinko_bet():
         data = request.get_json()
         bet_amount = float(data.get('amount', 0))
         risk_level = data.get('risk_level', 'high')
+        wallet_id = data.get('wallet_id')
         
         print(f"🎰 PLINKO BET: User {current_user.username} betting {bet_amount} at {risk_level} risk")
         
@@ -462,16 +526,22 @@ def api_plinko_bet():
             print(f"❌ Invalid bet amount: {bet_amount}")
             return jsonify({'success': False, 'message': 'Invalid bet amount'})
         
-        # Check user's wallet balance before betting
-        wallet = current_user.get_primary_wallet()
-        if wallet:
-            print(f"💰 Current wallet balance: {wallet.balance} {wallet.currency}")
+        # Get the specified wallet or default to primary wallet
+        if wallet_id:
+            wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+            if not wallet:
+                print("❌ Specified wallet not found")
+                return jsonify({'success': False, 'message': 'Wallet not found'})
         else:
-            print("❌ No wallet found")
-            return jsonify({'success': False, 'message': 'No wallet found'})
+            wallet = current_user.get_primary_wallet()
+            if not wallet:
+                print("❌ No wallet found")
+                return jsonify({'success': False, 'message': 'No wallet found'})
+        
+        print(f"💰 Current wallet balance: {wallet.balance} {wallet.currency}")
         
         plinko = Plinko()
-        result = plinko.place_bet(current_user.user_id, bet_amount, risk_level)
+        result = plinko.place_bet(current_user.user_id, bet_amount, risk_level, wallet_id=wallet.wallet_id)
         
         print(f"🎲 Bet result: {result}")
         
@@ -501,16 +571,24 @@ def api_plinko_board_data():
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 @app.route('/blackjack')
+@app.route('/blackjack/<int:wallet_id>')
 @login_required
-def blackjack():
+def blackjack(wallet_id=None):
     """Blackjack game page"""
     try:
         from games.blackjack import Blackjack
         
         blackjack_game = Blackjack()
         
-        # Get user's primary wallet
-        wallet = current_user.get_primary_wallet() if current_user.wallets else None
+        # Get the specific wallet or default to primary wallet
+        if wallet_id:
+            wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+            if not wallet:
+                flash('Wallet not found.', 'danger')
+                return redirect(url_for('blackjack'))
+        else:
+            wallet = current_user.get_primary_wallet() if current_user.wallets else None
+        
         if not wallet:
             flash('No wallet found. Please contact support.', 'error')
             return redirect(url_for('index'))
@@ -520,6 +598,7 @@ def blackjack():
         
         return render_template('blackjack.html', 
                              wallet=wallet,
+                             all_wallets=current_user.wallets,
                              statistics=statistics)
         
     except Exception as e:
@@ -535,12 +614,23 @@ def api_blackjack_bet():
         
         data = request.get_json()
         bet_amount = float(data.get('amount', 0))
+        wallet_id = data.get('wallet_id')
         
         if bet_amount <= 0:
             return jsonify({'success': False, 'message': 'Invalid bet amount'})
         
+        # Get the specified wallet or default to primary wallet
+        if wallet_id:
+            wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+            if not wallet:
+                return jsonify({'success': False, 'message': 'Wallet not found'})
+        else:
+            wallet = current_user.get_primary_wallet()
+            if not wallet:
+                return jsonify({'success': False, 'message': 'No wallet found'})
+        
         blackjack = Blackjack()
-        result = blackjack.place_bet(current_user.user_id, bet_amount)
+        result = blackjack.place_bet(current_user.user_id, bet_amount, wallet_id=wallet.wallet_id)
         
         return jsonify(result)
         

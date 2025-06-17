@@ -50,6 +50,22 @@
                         <div class="payline-indicator"></div>
                     </div>
 
+                    <!-- Wallet Switcher -->
+                    {% if all_wallets and all_wallets|length > 1 %}
+                    <div class="wallet-switcher">
+                        <label class="control-label">WALLET</label>
+                        <div class="wallet-buttons">
+                            {% for w in all_wallets %}
+                            <a href="{{ url_for('slots', wallet_id=w.wallet_id) }}" 
+                               class="wallet-button {% if w.wallet_id == wallet.wallet_id %}active{% endif %}">
+                                {{ w.currency }}
+                                <small>{% if w.currency == 'USD' %}${% elif w.currency == 'EUR' %}€{% elif w.currency == 'BTC' %}₿{% endif %}{{ w.balance|round(2) }}</small>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Control Panel -->
                     <div class="control-panel">
                         <div class="bet-controls">
@@ -75,13 +91,8 @@
                             
                             <div class="balance-section">
                                 <label class="control-label">BALANCE</label>
-                                <div class="balance-display">
-                                    {% if current_user.wallets %}
-                                        {% set primary_wallet = current_user.get_primary_wallet() %}
-                                        {% if primary_wallet.currency == 'USD' %}${% elif primary_wallet.currency == 'EUR' %}€{% elif primary_wallet.currency == 'BTC' %}₿{% endif %}{{ primary_wallet.balance|round(2) }}
-                                    {% else %}
-                                        $0.00
-                                    {% endif %}
+                                <div class="balance-display" id="currentBalance">
+                                    {% if wallet.currency == 'USD' %}${% elif wallet.currency == 'EUR' %}€{% elif wallet.currency == 'BTC' %}₿{% endif %}{{ wallet.balance|round(2) }}
                                 </div>
                             </div>
                         </div>
@@ -521,6 +532,59 @@
     font-size: 1.1rem;
 }
 
+/* Wallet Switcher */
+.wallet-switcher {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: linear-gradient(145deg, #34495e, #2c3e50);
+    border-radius: 15px;
+    border: 2px solid #f39c12;
+}
+
+.wallet-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.wallet-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 15px;
+    background: linear-gradient(145deg, #3498db, #2980b9);
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    border: 2px solid transparent;
+}
+
+.wallet-button:hover {
+    background: linear-gradient(145deg, #5dade2, #3498db);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.wallet-button.active {
+    background: linear-gradient(145deg, #f39c12, #d68910);
+    border: 2px solid #fff;
+    box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+}
+
+.wallet-button small {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .casino-title { font-size: 2rem; }
@@ -529,6 +593,8 @@
     .symbol-image { width: 70px; height: 70px; }
     .bet-controls { flex-direction: column; gap: 15px; }
     .paytable-grid { grid-template-columns: 1fr; }
+    .wallet-buttons { gap: 5px; }
+    .wallet-button { min-width: 70px; padding: 8px 12px; }
 }
 </style>
 
@@ -622,7 +688,10 @@ document.addEventListener('DOMContentLoaded', function() {
                  headers: {
                      'Content-Type': 'application/json',
                  },
-                 body: JSON.stringify({ amount: amount })
+                 body: JSON.stringify({ 
+                     amount: amount,
+                     wallet_id: {{ wallet.wallet_id }}
+                 })
              }).then(response => response.json());
 
              // Wait for both spinning and API to complete
@@ -666,12 +735,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     winAmount.textContent = '';
                 }
 
-                // Update wallet balance in navbar
+                // Update wallet balance in display
                 if (data.wallet_balance !== undefined) {
-                    const walletDisplay = document.querySelector('.nav-link i.fa-coins + span');
-                    if (walletDisplay) {
+                    const balanceDisplay = document.getElementById('currentBalance');
+                    if (balanceDisplay) {
                         const currency = data.wallet_currency || 'USD';
                         const symbol = currency === 'EUR' ? '€' : currency === 'BTC' ? '₿' : '$';
+                        balanceDisplay.textContent = `${symbol}${data.wallet_balance.toFixed(2)}`;
+                    }
+                    
+                    // Also update navbar
+                    const walletDisplay = document.querySelector('.nav-link i.fa-coins + span');
+                    if (walletDisplay) {
                         walletDisplay.textContent = `${symbol}${data.wallet_balance.toFixed(2)} ${currency}`;
                     }
                 }

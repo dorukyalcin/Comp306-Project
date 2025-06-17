@@ -18,23 +18,24 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if current_user.is_authenticated %}
+                        {% set current_wallet_id = request.view_args.wallet_id if request.view_args and request.view_args.get('wallet_id') else none %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('horse_racing') }}">
+                            <a class="nav-link" href="{% if current_wallet_id %}{{ url_for('horse_racing', wallet_id=current_wallet_id) }}{% else %}{{ url_for('horse_racing') }}{% endif %}">
                                 <i class="fas fa-horse"></i> Horse Racing
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('slots') }}">
+                            <a class="nav-link" href="{% if current_wallet_id %}{{ url_for('slots', wallet_id=current_wallet_id) }}{% else %}{{ url_for('slots') }}{% endif %}">
                                 <i class="fas fa-dice"></i> Slots
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('plinko') }}">
+                            <a class="nav-link" href="{% if current_wallet_id %}{{ url_for('plinko', wallet_id=current_wallet_id) }}{% else %}{{ url_for('plinko') }}{% endif %}">
                                 <i class="fas fa-circle"></i> Plinko
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('blackjack') }}">
+                            <a class="nav-link" href="{% if current_wallet_id %}{{ url_for('blackjack', wallet_id=current_wallet_id) }}{% else %}{{ url_for('blackjack') }}{% endif %}">
                                 <i class="fas fa-spade"></i> Blackjack
                             </a>
                         </li>
@@ -49,15 +50,61 @@
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('wallet') }}">
-                                <i class="fas fa-coins text-warning"></i>
-                                {% if current_user.wallets %}
-                                    <span class="text-light">{{ current_user.get_primary_wallet().balance|round(2) }} {{ current_user.get_primary_wallet().currency }}</span>
-                                {% else %}
-                                    <span class="text-light">No Wallet</span>
-                                {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="walletDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-wallet text-warning"></i>
+                                <span class="wallet-info">
+                                    {% if request.endpoint in ['horse_racing', 'slots', 'plinko', 'blackjack', 'wallet'] and request.view_args and request.view_args.get('wallet_id') %}
+                                        <!-- Show selected wallet if in game with wallet_id -->
+                                        {% set selected_wallet = current_user.wallets | selectattr("wallet_id", "equalto", request.view_args.wallet_id) | first %}
+                                        {% if selected_wallet %}
+                                            {% if selected_wallet.currency == 'USD' %}💵{% elif selected_wallet.currency == 'EUR' %}💶{% elif selected_wallet.currency == 'BTC' %}₿{% endif %}
+                                            <span class="text-light">{{ selected_wallet.balance|round(2) }} {{ selected_wallet.currency }}</span>
+                                        {% else %}
+                                            {% if current_user.wallets %}
+                                                {% set primary_wallet = current_user.get_primary_wallet() %}
+                                                {% if primary_wallet.currency == 'USD' %}💵{% elif primary_wallet.currency == 'EUR' %}💶{% elif primary_wallet.currency == 'BTC' %}₿{% endif %}
+                                                <span class="text-light">{{ primary_wallet.balance|round(2) }} {{ primary_wallet.currency }}</span>
+                                            {% else %}
+                                                <span class="text-light">No Wallet</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        <!-- Show primary wallet by default -->
+                                        {% if current_user.wallets %}
+                                            {% set primary_wallet = current_user.get_primary_wallet() %}
+                                            {% if primary_wallet.currency == 'USD' %}💵{% elif primary_wallet.currency == 'EUR' %}💶{% elif primary_wallet.currency == 'BTC' %}₿{% endif %}
+                                            <span class="text-light">{{ primary_wallet.balance|round(2) }} {{ primary_wallet.currency }}</span>
+                                        {% else %}
+                                            <span class="text-light">No Wallet</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="walletDropdown">
+                                {% if current_user.wallets %}
+                                    {% for wallet in current_user.wallets %}
+                                    <li>
+                                        <a class="dropdown-item wallet-switch-item" 
+                                           href="javascript:void(0)" 
+                                           data-wallet-id="{{ wallet.wallet_id }}"
+                                           data-currency="{{ wallet.currency }}"
+                                           data-balance="{{ wallet.balance|round(2) }}">
+                                            <i class="fas fa-coins text-warning me-2"></i>
+                                            {% if wallet.currency == 'USD' %}💵{% elif wallet.currency == 'EUR' %}💶{% elif wallet.currency == 'BTC' %}₿{% endif %}
+                                            {{ wallet.currency }} - {{ wallet.balance|round(2) }}
+                                            {% if request.view_args and request.view_args.get('wallet_id') == wallet.wallet_id %}
+                                                <i class="fas fa-check text-success ms-1"></i>
+                                            {% endif %}
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('wallet') }}"><i class="fas fa-cog me-2"></i>Manage Wallets</a></li>
+                                {% else %}
+                                    <li><a class="dropdown-item" href="{{ url_for('wallet') }}">No Wallets Available</a></li>
+                                {% endif %}
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/profile">Profile</a>
@@ -94,5 +141,193 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // Smart wallet switching function - maintains page context
+    function switchToWalletSmart(walletId) {
+        const currentPath = window.location.pathname;
+        
+        // Check if we're currently on a game page with wallet context
+        const gameMatch = currentPath.match(/\/(slots|plinko|blackjack|horse-racing)(?:\/\d+)?/);
+        const walletMatch = currentPath.match(/\/wallet(?:\/\d+)?/);
+        
+        if (gameMatch) {
+            // We're on a game page - switch to the same game with new wallet
+            const gameName = gameMatch[1];
+            window.location.href = `/${gameName}/${walletId}`;
+        } else if (walletMatch) {
+            // We're on a wallet page - switch to new wallet page
+            window.location.href = `/wallet/${walletId}`;
+        } else {
+            // We're on another page - go to wallet management for selected wallet
+            window.location.href = `/wallet/${walletId}`;
+        }
+    }
+
+    // Enhanced Wallet Switching Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add smart wallet switching functionality
+        const walletSwitchItems = document.querySelectorAll('.wallet-switch-item');
+        
+        walletSwitchItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const walletId = this.getAttribute('data-wallet-id');
+                const currency = this.getAttribute('data-currency');
+                const balance = this.getAttribute('data-balance');
+                
+                // Add loading state
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Switching...';
+                this.style.pointerEvents = 'none';
+                
+                // Smart wallet switching - maintains context
+                switchToWalletSmart(walletId);
+                
+                // Reset after navigation (won't be seen due to page change)
+                setTimeout(() => {
+                    this.innerHTML = originalContent;
+                    this.style.pointerEvents = 'auto';
+                }, 2000);
+            });
+        });
+        
+        // Add real-time balance updates
+        function updateWalletBalance(newBalance, currency, walletId) {
+            // Ensure newBalance is a number
+            const balance = parseFloat(newBalance);
+            if (isNaN(balance)) {
+                console.error('updateWalletBalance: newBalance is not a valid number:', newBalance);
+                return;
+            }
+            
+            // Update main wallet display in navigation
+            const walletInfo = document.querySelector('.wallet-info span.text-light');
+            if (walletInfo) {
+                const currencySymbol = currency === 'EUR' ? '💶' : currency === 'BTC' ? '₿' : '💵';
+                walletInfo.textContent = `${balance.toFixed(2)} ${currency}`;
+                
+                // Add update animation
+                walletInfo.style.transform = 'scale(1.1)';
+                walletInfo.style.color = '#28a745';
+                
+                setTimeout(() => {
+                    walletInfo.style.transform = 'scale(1)';
+                    walletInfo.style.color = '';
+                }, 300);
+            }
+            
+            // Update wallet dropdown items
+            const dropdownItems = document.querySelectorAll('.wallet-switch-item');
+            dropdownItems.forEach(item => {
+                if (item.getAttribute('data-wallet-id') === walletId.toString()) {
+                    const currencySymbol = currency === 'EUR' ? '💶' : currency === 'BTC' ? '₿' : '💵';
+                    const isActive = item.querySelector('.fa-check');
+                    const activeIndicator = isActive ? '<i class="fas fa-check text-success ms-1"></i>' : '';
+                    
+                    item.innerHTML = `
+                        <i class="fas fa-coins text-warning me-2"></i>
+                        ${currencySymbol} ${currency} - ${balance.toFixed(2)}
+                        ${activeIndicator}
+                    `;
+                    
+                    // Update data attributes
+                    item.setAttribute('data-balance', balance.toFixed(2));
+                    
+                    // Add flash animation
+                    item.style.backgroundColor = 'rgba(40, 167, 69, 0.2)';
+                    setTimeout(() => {
+                        item.style.backgroundColor = '';
+                    }, 500);
+                }
+            });
+        }
+        
+        // Function to fetch and update wallet balance from server
+        function refreshWalletBalance(walletId) {
+            fetch(`/api/wallet/${walletId}/balance`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateWalletBalance(data.balance, data.currency, walletId);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching wallet balance:', error);
+                });
+        }
+        
+        // Function to automatically refresh current wallet balance
+        function refreshCurrentWalletBalance() {
+            const currentUrl = window.location.pathname;
+            const walletMatch = currentUrl.match(/\/(\w+)\/(\d+)/);
+            if (walletMatch) {
+                const walletId = walletMatch[2];
+                refreshWalletBalance(walletId);
+            }
+        }
+        
+        // Make functions globally available
+        window.updateWalletBalance = updateWalletBalance;
+        window.refreshWalletBalance = refreshWalletBalance;
+        window.refreshCurrentWalletBalance = refreshCurrentWalletBalance;
+        
+        // Add keyboard shortcuts for wallet switching
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey) {
+                switch(e.key) {
+                    case '1': // Ctrl+Shift+1 for first wallet
+                    case '2': // Ctrl+Shift+2 for second wallet  
+                    case '3': // Ctrl+Shift+3 for third wallet
+                        e.preventDefault();
+                        const walletIndex = parseInt(e.key) - 1;
+                        const walletItems = document.querySelectorAll('.wallet-switch-item');
+                        if (walletItems[walletIndex]) {
+                            walletItems[walletIndex].click();
+                        }
+                        break;
+                }
+            }
+        });
+        
+        // Add wallet dropdown auto-close on outside click
+        document.addEventListener('click', function(e) {
+            const walletDropdown = document.getElementById('walletDropdown');
+            const dropdownMenu = walletDropdown?.nextElementSibling;
+            
+            if (walletDropdown && dropdownMenu && !walletDropdown.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                const bootstrap = window.bootstrap;
+                if (bootstrap) {
+                    const dropdown = bootstrap.Dropdown.getInstance(walletDropdown);
+                    if (dropdown) {
+                        dropdown.hide();
+                    }
+                }
+            }
+        });
+        
+        // Add visual feedback for current page wallet
+        const currentUrl = window.location.pathname;
+        const walletIdMatch = currentUrl.match(/\/(slots|plinko|blackjack|horse-racing|wallet)\/(\d+)/);
+        
+        if (walletIdMatch) {
+            const currentWalletId = walletIdMatch[2];
+            const walletDropdownLink = document.getElementById('walletDropdown');
+            
+            if (walletDropdownLink) {
+                walletDropdownLink.classList.add('active-wallet');
+                
+                // Add tooltip showing current wallet context
+                walletDropdownLink.title = `Using wallet for ${walletIdMatch[1]}`;
+            }
+        }
+    });
+    
+    // Global function to switch to specific wallet for current game (backward compatibility)
+    function switchToWalletForGame(walletId) {
+        switchToWalletSmart(walletId);
+    }
+    </script>
 </body>
 </html> 

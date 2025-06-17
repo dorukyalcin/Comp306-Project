@@ -6,23 +6,35 @@
 <div class="container">
     <h2 class="mb-4">Wallet Management</h2>
     
-    <!-- Wallet Switcher -->
+    <!-- Enhanced Wallet Switcher -->
     {% if all_wallets|length > 1 %}
-    <div class="card mb-4 wallet-switcher">
+    <div class="card mb-4 enhanced-wallet-switcher">
         <div class="card-body">
-            <h5 class="card-title">Select Wallet</h5>
-            <div class="row">
+            <h5 class="card-title">💰 Your Wallets</h5>
+            <p class="text-muted mb-3">Switch between your different currency wallets</p>
+            <div class="wallet-grid">
                 {% for w in all_wallets %}
-                <div class="col-md-4 mb-2">
-                    <a href="{{ url_for('wallet', wallet_id=w.wallet_id) }}" 
-                       class="btn {% if w.wallet_id == wallet.wallet_id %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span><strong>{{ w.currency }}</strong></span>
-                            <span class="badge wallet-balance-badge {% if w.wallet_id == wallet.wallet_id %}bg-light text-dark{% else %}bg-primary{% endif %}">
-                                {{ "%.2f"|format(w.balance) }}
-                            </span>
-                        </div>
-                    </a>
+                <div class="wallet-card {% if w.wallet_id == wallet.wallet_id %}active{% endif %}" 
+                     onclick="switchWallet({{ w.wallet_id }})">
+                    <div class="wallet-currency">
+                        {% if w.currency == 'USD' %}
+                            <span class="currency-icon">💵</span>
+                        {% elif w.currency == 'EUR' %}
+                            <span class="currency-icon">💶</span>
+                        {% elif w.currency == 'BTC' %}
+                            <span class="currency-icon">₿</span>
+                        {% endif %}
+                        <strong>{{ w.currency }}</strong>
+                    </div>
+                    <div class="wallet-balance">
+                        <span class="balance-amount">{{ "%.2f"|format(w.balance) }}</span>
+                        <small class="balance-label">{{ w.currency }}</small>
+                    </div>
+                    {% if w.wallet_id == wallet.wallet_id %}
+                    <div class="active-indicator">
+                        <i class="fas fa-check-circle"></i> Active
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -30,11 +42,28 @@
     </div>
     {% endif %}
     
-    <!-- Wallet Balance Card -->
-    <div class="card mb-4">
+    <!-- Current Wallet Balance -->
+    <div class="card mb-4 current-wallet-card">
         <div class="card-body">
-            <h5 class="card-title">Current Balance - {{ wallet.currency }} Wallet</h5>
-            <h3 class="text-primary">{{ "%.2f"|format(wallet.balance) }} {{ wallet.currency }}</h3>
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="card-title">Current Balance - {{ wallet.currency }} Wallet</h5>
+                    <h3 class="text-primary mb-0">
+                        {% if wallet.currency == 'USD' %}${% elif wallet.currency == 'EUR' %}€{% elif wallet.currency == 'BTC' %}₿{% endif %}{{ "%.2f"|format(wallet.balance) }} {{ wallet.currency }}
+                    </h3>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="quick-game-access">
+                        <p class="mb-2"><small class="text-muted">Play with this wallet:</small></p>
+                        <div class="game-buttons">
+                            <a href="{{ url_for('slots', wallet_id=wallet.wallet_id) }}" class="btn btn-sm btn-outline-primary me-1" title="Slots">🎰</a>
+                            <a href="{{ url_for('plinko', wallet_id=wallet.wallet_id) }}" class="btn btn-sm btn-outline-primary me-1" title="Plinko">⚪</a>
+                            <a href="{{ url_for('blackjack', wallet_id=wallet.wallet_id) }}" class="btn btn-sm btn-outline-primary me-1" title="Blackjack">🃏</a>
+                            <a href="{{ url_for('horse_racing', wallet_id=wallet.wallet_id) }}" class="btn btn-sm btn-outline-primary" title="Horse Racing">🐎</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -98,6 +127,8 @@
                             <option value="deposit" {% if current_type == 'deposit' %}selected{% endif %}>Deposits</option>
                             <option value="withdraw" {% if current_type == 'withdraw' %}selected{% endif %}>Withdrawals</option>
                             <option value="donate" {% if current_type == 'donate' %}selected{% endif %}>Donations</option>
+                            <option value="bet" {% if current_type == 'bet' %}selected{% endif %}>Bets</option>
+                            <option value="win" {% if current_type == 'win' %}selected{% endif %}>Winnings</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -139,7 +170,7 @@
                             <tr>
                                 <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                 <td>
-                                    <span class="badge {% if transaction.txn_type == 'deposit' %}bg-success{% elif transaction.txn_type == 'donate' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    <span class="badge {% if transaction.txn_type == 'deposit' %}bg-success{% elif transaction.txn_type == 'win' %}bg-info{% elif transaction.txn_type == 'donate' %}bg-warning{% elif transaction.txn_type == 'bet' %}bg-primary{% else %}bg-danger{% endif %}">
                                         {{ transaction.txn_type|title }}
                                     </span>
                                 </td>
@@ -157,4 +188,257 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Enhanced Wallet Switcher Styles */
+.enhanced-wallet-switcher {
+    background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.wallet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.wallet-card {
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.wallet-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+    border-color: #007bff;
+}
+
+.wallet-card.active {
+    background: linear-gradient(145deg, #007bff, #0056b3);
+    border-color: #004085;
+    color: white;
+    box-shadow: 0 8px 25px rgba(0,123,255,0.3);
+}
+
+.wallet-card.active:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,123,255,0.4);
+}
+
+.currency-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.wallet-currency {
+    margin-bottom: 15px;
+}
+
+.wallet-currency strong {
+    font-size: 1.2rem;
+    display: block;
+    margin-top: 5px;
+}
+
+.wallet-balance {
+    margin-bottom: 10px;
+}
+
+.balance-amount {
+    font-size: 1.4rem;
+    font-weight: bold;
+    display: block;
+}
+
+.balance-label {
+    opacity: 0.8;
+    font-size: 0.8rem;
+}
+
+.wallet-card.active .balance-label {
+    color: rgba(255,255,255,0.8);
+}
+
+.active-indicator {
+    font-size: 0.85rem;
+    color: #28a745;
+    font-weight: 500;
+}
+
+.wallet-card.active .active-indicator {
+    color: rgba(255,255,255,0.9);
+}
+
+.active-indicator i {
+    margin-right: 5px;
+}
+
+/* Current Wallet Card Styles */
+.current-wallet-card {
+    background: linear-gradient(145deg, #fff, #f8f9fa);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.quick-game-access .game-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.quick-game-access .btn {
+    font-size: 1.2rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.quick-game-access .btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,123,255,0.2);
+}
+
+/* Transaction Forms Enhancement */
+.transaction-forms .card {
+    transition: all 0.3s ease;
+}
+
+.transaction-forms .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wallet-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .quick-game-access {
+        text-align: center;
+        margin-top: 15px;
+    }
+    
+    .quick-game-access .game-buttons {
+        justify-content: center;
+    }
+    
+    .current-wallet-card .row {
+        text-align: center;
+    }
+}
+
+/* Loading Animation */
+.wallet-card-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.wallet-card-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+</style>
+
+<script>
+// Enhanced Wallet Switching Functionality
+function switchWallet(walletId) {
+    // Add loading state
+    const walletCard = event.currentTarget;
+    walletCard.classList.add('wallet-card-loading');
+    
+    // Navigate to the wallet
+    window.location.href = `/wallet/${walletId}`;
+}
+
+// Add smooth transitions when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate wallet cards on load
+    const walletCards = document.querySelectorAll('.wallet-card');
+    walletCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Add hover effects to transaction forms
+    const transactionCards = document.querySelectorAll('.transaction-forms .card');
+    transactionCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#007bff';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.borderColor = '';
+        });
+    });
+    
+    // Add success feedback for form submissions
+    const forms = document.querySelectorAll('.transaction-forms form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const button = this.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            // Re-enable after a short delay if form fails validation
+            setTimeout(() => {
+                if (button.disabled) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            }, 3000);
+        });
+    });
+});
+
+// Add keyboard navigation
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && e.key >= '1' && e.key <= '3') {
+        const walletCards = document.querySelectorAll('.wallet-card');
+        const index = parseInt(e.key) - 1;
+        
+        if (walletCards[index]) {
+            walletCards[index].click();
+        }
+    }
+});
+
+// Add quick wallet info tooltip
+function showWalletTooltip(element, walletId, currency, balance) {
+    // Implementation for showing detailed wallet info on hover
+    element.title = `${currency} Wallet - Balance: ${balance}\nClick to switch\nAlt+${Array.from(element.parentNode.children).indexOf(element) + 1} for quick access`;
+}
+</script>
+
 {% endblock %} 
