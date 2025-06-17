@@ -38,4 +38,43 @@ body {
 .form-control::placeholder, .form-select::placeholder {
     color: #b0b0b0 !important;
     opacity: 1;
+}
+
+/* Wallet Switcher Styles */
+.wallet-switcher .btn {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.wallet-switcher .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.wallet-switcher .btn-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+}
+
+.wallet-switcher .btn-outline-primary:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.wallet-balance-badge {
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+/* Transaction Form Improvements */
+.transaction-forms .card {
+    transition: transform 0.2s ease;
+    border-radius: 10px;
+}
+
+.transaction-forms .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
 } 

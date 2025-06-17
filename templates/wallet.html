@@ -6,21 +6,45 @@
 <div class="container">
     <h2 class="mb-4">Wallet Management</h2>
     
+    <!-- Wallet Switcher -->
+    {% if all_wallets|length > 1 %}
+    <div class="card mb-4 wallet-switcher">
+        <div class="card-body">
+            <h5 class="card-title">Select Wallet</h5>
+            <div class="row">
+                {% for w in all_wallets %}
+                <div class="col-md-4 mb-2">
+                    <a href="{{ url_for('wallet', wallet_id=w.wallet_id) }}" 
+                       class="btn {% if w.wallet_id == wallet.wallet_id %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>{{ w.currency }}</strong></span>
+                            <span class="badge wallet-balance-badge {% if w.wallet_id == wallet.wallet_id %}bg-light text-dark{% else %}bg-primary{% endif %}">
+                                {{ "%.2f"|format(w.balance) }}
+                            </span>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- Wallet Balance Card -->
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Current Balance</h5>
+            <h5 class="card-title">Current Balance - {{ wallet.currency }} Wallet</h5>
             <h3 class="text-primary">{{ "%.2f"|format(wallet.balance) }} {{ wallet.currency }}</h3>
         </div>
     </div>
 
     <!-- Transaction Forms -->
-    <div class="row mb-4">
-        <div class="col-md-6">
+    <div class="row mb-4 transaction-forms">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Deposit</h5>
-                    <form method="POST">
+                    <form method="POST" action="{{ url_for('wallet', wallet_id=wallet.wallet_id) }}">
                         <div class="mb-3">
                             <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
                         </div>
@@ -30,11 +54,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Withdraw</h5>
-                    <form method="POST">
+                    <form method="POST" action="{{ url_for('wallet', wallet_id=wallet.wallet_id) }}">
                         <div class="mb-3">
                             <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
                         </div>
@@ -44,21 +68,36 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Donate</h5>
+                    <form method="POST" action="{{ url_for('wallet', wallet_id=wallet.wallet_id) }}">
+                        <div class="mb-3">
+                            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                        </div>
+                        <input type="hidden" name="action" value="donate">
+                        <button type="submit" class="btn btn-warning">Donate to Casino</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Transaction History -->
     <div class="card">
         <div class="card-body">
-            <h5 class="card-title">Transaction History</h5>
+            <h5 class="card-title">Transaction History - {{ wallet.currency }} Wallet</h5>
             
             <!-- Filters -->
-            <form method="GET" class="mb-4">
+            <form method="GET" action="{{ url_for('wallet', wallet_id=wallet.wallet_id) }}" class="mb-4">
                 <div class="row g-3">
                     <div class="col-md-3">
                         <select name="type" class="form-select">
                             <option value="all" {% if current_type == 'all' %}selected{% endif %}>All Transactions</option>
                             <option value="deposit" {% if current_type == 'deposit' %}selected{% endif %}>Deposits</option>
                             <option value="withdraw" {% if current_type == 'withdraw' %}selected{% endif %}>Withdrawals</option>
+                            <option value="donate" {% if current_type == 'donate' %}selected{% endif %}>Donations</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -69,7 +108,7 @@
                     </div>
                     <div class="col-md-3">
                         <button type="submit" class="btn btn-primary">Apply Filters</button>
-                        <a href="{{ url_for('wallet') }}" class="btn btn-secondary">Clear</a>
+                        <a href="{{ url_for('wallet', wallet_id=wallet.wallet_id) }}" class="btn btn-secondary">Clear</a>
                     </div>
                 </div>
             </form>
@@ -81,14 +120,14 @@
                         <tr>
                             <th>
                                 Date
-                                <a href="{{ url_for('wallet', type=current_type, sort='date', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
+                                <a href="{{ url_for('wallet', wallet_id=wallet.wallet_id, type=current_type, sort='date', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
                                     {% if current_sort == 'date' and current_order == 'asc' %}↑{% else %}↓{% endif %}
                                 </a>
                             </th>
                             <th>Type</th>
                             <th>
                                 Amount
-                                <a href="{{ url_for('wallet', type=current_type, sort='amount', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
+                                <a href="{{ url_for('wallet', wallet_id=wallet.wallet_id, type=current_type, sort='amount', order='asc', start_date=start_date, end_date=end_date) }}" class="text-decoration-none">
                                     {% if current_sort == 'amount' and current_order == 'asc' %}↑{% else %}↓{% endif %}
                                 </a>
                             </th>
@@ -100,7 +139,7 @@
                             <tr>
                                 <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                 <td>
-                                    <span class="badge {% if transaction.txn_type == 'deposit' %}bg-success{% else %}bg-danger{% endif %}">
+                                    <span class="badge {% if transaction.txn_type == 'deposit' %}bg-success{% elif transaction.txn_type == 'donate' %}bg-warning{% else %}bg-danger{% endif %}">
                                         {{ transaction.txn_type|title }}
                                     </span>
                                 </td>

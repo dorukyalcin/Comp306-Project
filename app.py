@@ -142,14 +142,22 @@ def profile():
     return render_template('profile.html', user=current_user)
 
 @app.route('/wallet', methods=['GET', 'POST'])
+@app.route('/wallet/<int:wallet_id>', methods=['GET', 'POST'])
 @login_required
-def wallet():
+def wallet(wallet_id=None):
     # Check if user has a wallet
     if not current_user.wallets:
         flash('No wallet found. Please contact support to create a wallet.', 'danger')
         return redirect(url_for('index'))
     
-    wallet = current_user.get_primary_wallet()
+    # Get the specific wallet or default to primary wallet
+    if wallet_id:
+        wallet = Wallet.query.filter_by(wallet_id=wallet_id, user_id=current_user.user_id).first()
+        if not wallet:
+            flash('Wallet not found.', 'danger')
+            return redirect(url_for('wallet'))
+    else:
+        wallet = current_user.get_primary_wallet()
     
     if request.method == 'POST':
         try:
@@ -161,11 +169,11 @@ def wallet():
                 amount = Decimal(amount_str)
             except (ValueError, TypeError):
                 flash('Invalid amount format. Please enter a valid number.', 'danger')
-                return redirect(url_for('wallet'))
+                return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
             
             if amount <= 0:
                 flash('Amount must be greater than 0.', 'danger')
-                return redirect(url_for('wallet'))
+                return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
             
             if action == 'deposit':
                 wallet.balance += amount
@@ -180,7 +188,7 @@ def wallet():
             elif action == 'withdraw':
                 if amount > wallet.balance:
                     flash('Insufficient funds.', 'danger')
-                    return redirect(url_for('wallet'))
+                    return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
                     
                 wallet.balance -= amount
                 transaction = Transaction(
@@ -190,9 +198,23 @@ def wallet():
                 )
                 db.session.add(transaction)
                 flash(f'Successfully withdrew {amount:.2f} {wallet.currency}', 'success')
+                
+            elif action == 'donate':
+                if amount > wallet.balance:
+                    flash('Insufficient funds for donation.', 'danger')
+                    return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
+                    
+                wallet.balance -= amount
+                transaction = Transaction(
+                    wallet_id=wallet.wallet_id,
+                    amount=amount,
+                    txn_type='donate'
+                )
+                db.session.add(transaction)
+                flash(f'Successfully donated {amount:.2f} {wallet.currency} to the casino. Thank you for your generosity!', 'success')
             else:
                 flash('Invalid action.', 'danger')
-                return redirect(url_for('wallet'))
+                return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
                 
             db.session.commit()
             
@@ -200,7 +222,7 @@ def wallet():
             db.session.rollback()
             flash(f'Transaction failed: {str(e)}', 'danger')
             
-        return redirect(url_for('wallet'))
+        return redirect(url_for('wallet', wallet_id=wallet.wallet_id))
     
     # GET request - display wallet page
     try:
@@ -238,6 +260,7 @@ def wallet():
         
         return render_template('wallet.html', 
                              wallet=wallet,
+                             all_wallets=current_user.wallets,
                              transactions=transactions,
                              current_type=txn_type,
                              current_sort=sort_by,
