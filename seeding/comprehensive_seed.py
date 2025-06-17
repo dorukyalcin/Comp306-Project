@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+"""
+Comprehensive Seeding Script
+===========================
+Creates initial data including admin users and basic game setup.
+"""
+
 import sys
 import os
-sys.path.insert(0, '/app')
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
 from models import User, UserSettings, Wallet, Transaction, Game, Round, Outcome, Bet, SarcasTemp, Horse, HorseRunner, HorseResult
@@ -783,5 +789,60 @@ def print_seeding_summary():
     print("="*60)
     print("✅ Ready for testing! Login with any username and password 'password123'")
 
+def seed_admin_users():
+    """Create admin users for the casino system"""
+    with app.app_context():
+        print("\n👤 Creating Admin Users...")
+        
+        admin_users = [
+            {
+                'username': 'admin_casino',
+                'email': 'admin@casino.com',
+                'password': 'password123',
+                'initial_balance': 10000.00
+            },
+            {
+                'username': 'admin_sarah',
+                'email': 'sarah@casino.com',
+                'password': 'password123',
+                'initial_balance': 10000.00
+            }
+        ]
+        
+        for admin_data in admin_users:
+            # Check if admin already exists
+            existing_admin = User.query.filter_by(username=admin_data['username']).first()
+            if existing_admin:
+                print(f"✓ Admin {admin_data['username']} already exists")
+                continue
+                
+            # Create admin user
+            admin = User(
+                username=admin_data['username'],
+                email=admin_data['email'],
+                pw_hash=generate_password_hash(admin_data['password']),
+                is_admin=True,
+                profile_picture='default_profile.png'
+            )
+            db.session.add(admin)
+            db.session.flush()  # Get the user ID
+            
+            # Create admin wallet
+            wallet = Wallet(
+                user_id=admin.user_id,
+                currency='USD',
+                balance=Decimal(str(admin_data['initial_balance']))
+            )
+            db.session.add(wallet)
+            
+            print(f"✓ Created admin {admin_data['username']}")
+        
+        db.session.commit()
+        print("✅ Admin users created successfully!")
+        return True
+
 if __name__ == "__main__":
-    comprehensive_seed() 
+    if seed_admin_users():
+        print("\n🎉 Initial seeding completed!")
+    else:
+        print("\n❌ Error during seeding.") 

@@ -854,17 +854,16 @@ def admin_delete_user(user_id):
 @admin_required
 def admin_analytics():
     """Execute complex SQL queries for database course requirements"""
+    analytics_results = {
+        'user_performance': [],
+        'game_revenue': [],
+        'horse_racing': [],
+        'transaction_patterns': [],
+        'betting_behavior': []
+    }
+    
+    # Query 1: User Performance Analytics
     try:
-        # Execute queries and capture results for display
-        analytics_results = {
-            'user_performance': [],
-            'game_revenue': [],
-            'horse_racing': [],
-            'transaction_patterns': [],
-            'betting_behavior': []
-        }
-        
-        # Query 1: User Performance Analytics
         user_perf_sql = """
         WITH user_betting_stats AS (
             SELECT 
@@ -912,8 +911,15 @@ def admin_analytics():
         
         result = db.session.execute(text(user_perf_sql))
         analytics_results['user_performance'] = [dict(row._mapping) for row in result]
-        
-        # Query 2: Game Revenue Analysis  
+        db.session.commit()
+        print("Query 1 executed successfully")
+    except Exception as e:
+        print(f"Error in Query 1: {str(e)}")
+        db.session.rollback()
+        analytics_results['user_performance'] = []
+
+    # Query 2: Game Revenue Analysis  
+    try:
         game_revenue_sql = """
         WITH game_stats AS (
             SELECT 
@@ -946,8 +952,15 @@ def admin_analytics():
         
         result = db.session.execute(text(game_revenue_sql))
         analytics_results['game_revenue'] = [dict(row._mapping) for row in result]
-        
-        # Query 3: Horse Racing Analytics
+        db.session.commit()
+        print("Query 2 executed successfully")
+    except Exception as e:
+        print(f"Error in Query 2: {str(e)}")
+        db.session.rollback()
+        analytics_results['game_revenue'] = []
+
+    # Query 3: Horse Racing Analytics
+    try:
         horse_racing_sql = """
         SELECT 
             h.name,
@@ -976,19 +989,17 @@ def admin_analytics():
         ORDER BY COUNT(CASE WHEN hr.finish_place = 1 THEN 1 END) DESC, AVG(hr.finish_place) ASC;
         """
         
-        try:
-            print("Executing horse racing query...")  # Debug print
-            result = db.session.execute(text(horse_racing_sql))
-            print("Query executed successfully")  # Debug print
-            rows = result.fetchall()
-            print(f"Found {len(rows)} horses")  # Debug print
-            analytics_results['horse_racing'] = [dict(row._mapping) for row in rows]
-            print("Horse racing data:", analytics_results['horse_racing'])  # Debug print
-        except Exception as e:
-            print("Error in horse racing query:", str(e))  # Debug print
-            analytics_results['horse_racing'] = []
-        
-        # Query 4: Transaction Pattern Analysis
+        result = db.session.execute(text(horse_racing_sql))
+        analytics_results['horse_racing'] = [dict(row._mapping) for row in result]
+        db.session.commit()
+        print("Query 3 executed successfully")
+    except Exception as e:
+        print(f"Error in Query 3: {str(e)}")
+        db.session.rollback()
+        analytics_results['horse_racing'] = []
+
+    # Query 4: Transaction Pattern Analysis
+    try:
         transaction_sql = """
         WITH user_transaction_summary AS (
             SELECT 
@@ -1068,18 +1079,17 @@ def admin_analytics():
         LIMIT 15;
         """
         
-        try:
-            print("Executing transaction pattern query...")  # Debug print
-            result = db.session.execute(text(transaction_sql))
-            print("Transaction query executed successfully")  # Debug print
-            rows = result.fetchall()
-            print(f"Found {len(rows)} transaction records")  # Debug print
-            analytics_results['transaction_patterns'] = [dict(row._mapping) for row in rows]
-        except Exception as e:
-            print("Error in transaction pattern query:", str(e))  # Debug print
-            analytics_results['transaction_patterns'] = []
-        
-        # Query 5: Betting Behavior Cohort Analysis
+        result = db.session.execute(text(transaction_sql))
+        analytics_results['transaction_patterns'] = [dict(row._mapping) for row in result]
+        db.session.commit()
+        print("Query 4 executed successfully")
+    except Exception as e:
+        print(f"Error in Query 4: {str(e)}")
+        db.session.rollback()
+        analytics_results['transaction_patterns'] = []
+
+    # Query 5: Betting Behavior Cohort Analysis
+    try:
         cohort_sql = """
         WITH user_cohorts AS (
             SELECT 
@@ -1105,7 +1115,7 @@ def admin_analytics():
                 uc.cohort_month,
                 ufb.first_bet_date,
                 ufb.first_bet_month,
-                EXTRACT(DAYS FROM (ufb.first_bet_date - uc.created_at::DATE)) as days_to_first_bet,
+                (ufb.first_bet_date - uc.created_at::DATE) as days_to_first_bet,
                 COUNT(b.bet_id) as total_bets,
                 COUNT(DISTINCT DATE(b.placed_at)) as betting_days,
                 COUNT(DISTINCT r.game_id) as games_tried,
@@ -1114,17 +1124,31 @@ def admin_analytics():
                 STDDEV(b.amount) as bet_size_variance,
                 MIN(b.placed_at) as betting_start,
                 MAX(b.placed_at) as last_bet_date,
-                EXTRACT(DAYS FROM (MAX(b.placed_at) - MIN(b.placed_at))) + 1 as betting_lifespan_days
+                (DATE(MAX(b.placed_at)) - DATE(MIN(b.placed_at))) + 1 as betting_lifespan_days
             FROM user_cohorts uc
             LEFT JOIN user_first_bet ufb ON uc.user_id = ufb.user_id
             LEFT JOIN bets b ON uc.user_id = b.user_id
             LEFT JOIN rounds r ON b.round_id = r.round_id
-            GROUP BY uc.user_id, uc.username, uc.cohort_month, ufb.first_bet_date, ufb.first_bet_month
+            GROUP BY uc.user_id, uc.username, uc.cohort_month, uc.created_at, ufb.first_bet_date, ufb.first_bet_month
             HAVING COUNT(b.bet_id) > 0
         ),
         user_behavior_segments AS (
             SELECT 
-                ubj.*,
+                user_id,
+                username,
+                cohort_month,
+                first_bet_date,
+                first_bet_month,
+                days_to_first_bet,
+                total_bets,
+                betting_days,
+                games_tried,
+                total_wagered,
+                avg_bet_size,
+                bet_size_variance,
+                betting_start,
+                last_bet_date,
+                betting_lifespan_days,
                 CASE 
                     WHEN total_bets >= 50 AND betting_lifespan_days >= 60 THEN 'High Value Regular'
                     WHEN total_bets >= 20 AND betting_lifespan_days >= 30 THEN 'Active Player'
@@ -1164,23 +1188,16 @@ def admin_analytics():
         LIMIT 15;
         """
         
-        try:
-            print("Executing betting behavior cohort query...")  # Debug print
-            result = db.session.execute(text(cohort_sql))
-            print("Cohort query executed successfully")  # Debug print
-            rows = result.fetchall()
-            print(f"Found {len(rows)} user behavioral records")  # Debug print
-            analytics_results['betting_behavior'] = [dict(row._mapping) for row in rows]
-        except Exception as e:
-            print("Error in betting behavior cohort query:", str(e))  # Debug print
-            analytics_results['betting_behavior'] = []
-        
-        return render_template('admin/analytics.html', analytics=analytics_results)
-        
+        result = db.session.execute(text(cohort_sql))
+        analytics_results['betting_behavior'] = [dict(row._mapping) for row in result]
+        db.session.commit()
+        print("Query 5 executed successfully")
     except Exception as e:
-        print("Analytics Error:", str(e))  # Debug: Print any errors
-        flash(f'Error running analytics: {str(e)}', 'danger')
-        return redirect(url_for('admin_dashboard'))
+        print(f"Error in Query 5: {str(e)}")
+        db.session.rollback()
+        analytics_results['betting_behavior'] = []
+
+    return render_template('admin/analytics.html', analytics=analytics_results)
 
 # Debug route for horse racing query
 @app.route('/admin/debug/horse-racing')
