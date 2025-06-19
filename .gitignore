@@ -1,8 +1,8 @@
-# Python
+# Python cache files
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
 build/
 develop-eggs/
@@ -20,24 +20,37 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# Virtual environment
 venv/
-ENV/
 env/
+.venv/
 
-# Environment Variables
-.env
-.env.*
+# Large asset files
+static/images/slots/
+games/slot_assets/
+games/card_assets/
+static/games/card_assets/
+games/game_assets/
+static/images/game_covers/
+static/res/dunce.png
+static/profile_pics/
 
-# IDE
-.idea/
+# Database files
+*.db
+*.sqlite3
+
+# IDE files
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# Database
-*.db
-*.sqlite3
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+pgdata/
 
 # Logs
 *.log 
