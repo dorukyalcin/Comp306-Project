@@ -1,10 +1,94 @@
 body {
     min-height: 100vh;
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: #ffffff; /* Default white text for the entire site */
 }
 
 .card {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Ensure text visibility on dark cards */
+.card.bg-dark, .bg-dark {
+    color: #ffffff !important;
+}
+
+.card.bg-dark .card-title,
+.card.bg-dark .card-text,
+.card.bg-dark p,
+.card.bg-dark h1,
+.card.bg-dark h2,
+.card.bg-dark h3,
+.card.bg-dark h4,
+.card.bg-dark h5,
+.card.bg-dark h6 {
+    color: #ffffff !important;
+}
+
+/* Profile specific styling */
+.profile-info {
+    color: #ffffff !important;
+}
+
+.profile-stats {
+    color: #ffffff !important;
+}
+
+/* Game Card Styles */
+.game-card {
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 12px;
+}
+
+.game-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.game-cover-container {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+}
+
+.game-cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.game-card:hover .game-cover-image {
+    transform: scale(1.05);
+}
+
+.game-cover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%);
+}
+
+.coming-soon-cover {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+}
+
+.game-card .card-title {
+    color: #ffffff !important;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.game-card .card-text {
+    color: #ffffff !important;
+    margin-bottom: 15px;
 }
 
 .form-control:focus, .form-select:focus {
@@ -146,5 +230,9 @@ body {
     
     .wallet-info span {
         font-size: 0.9em;
+    }
+    
+    .game-cover-container {
+        height: 150px;
     }
 } 

@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <div class="card bg-dark border-secondary">
                 <div class="card-header border-secondary">
-                    <h3 class="text-center mb-0">Profile</h3>
+                    <h3 class="text-center mb-0 text-white">Profile</h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -28,18 +28,18 @@
                         <div class="col-md-8">
                             <div class="card bg-dark border-secondary mb-3">
                                 <div class="card-body">
-                                    <h5 class="card-title">User Information</h5>
-                                    <p><strong>Username:</strong> {{ user.username }}</p>
-                                    <p><strong>Email:</strong> {{ user.email }}</p>
-                                    <p><strong>Member Since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+                                    <h5 class="card-title text-white">User Information</h5>
+                                    <p class="text-white"><strong>Username:</strong> {{ user.username }}</p>
+                                    <p class="text-white"><strong>Email:</strong> {{ user.email }}</p>
+                                    <p class="text-white"><strong>Member Since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
                                 </div>
                             </div>
                             
                             <div class="card bg-dark border-secondary">
                                 <div class="card-body">
-                                    <h5 class="card-title">Account Statistics</h5>
-                                    <p><strong>Current Balance:</strong> {{ user.get_primary_wallet().balance|round(2) }} {{ user.get_primary_wallet().currency }}</p>
-                                    <p><strong>Total Bets:</strong> {{ user.bets|length }}</p>
+                                    <h5 class="card-title text-white">Account Statistics</h5>
+                                    <p class="text-white"><strong>Current Balance:</strong> {{ user.get_primary_wallet().balance|round(2) }} {{ user.get_primary_wallet().currency }}</p>
+                                    <p class="text-white"><strong>Total Bets:</strong> {{ user.bets|length }}</p>
                                 </div>
                             </div>
                         </div>

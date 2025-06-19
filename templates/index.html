@@ -11,28 +11,40 @@
         {% if current_user.is_authenticated %}
             <div class="row">
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <img src="{{ url_for('static', filename='images/game_covers/horse.png') }}" alt="Horse Racing" class="game-cover-image">
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Horse Racing</h5>
-                            <p class="card-text">Bet on horses that might actually run!</p>
+                            <h5 class="card-title text-white">Horse Racing</h5>
+                            <p class="card-text text-white">Bet on horses that might actually run!</p>
                             <a href="{{ url_for('horse_racing') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <img src="{{ url_for('static', filename='images/game_covers/slots.jpg') }}" alt="Slots" class="game-cover-image">
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Slots</h5>
-                            <p class="card-text">Spin your way to sarcastically losing!</p>
+                            <h5 class="card-title text-white">Slots</h5>
+                            <p class="card-text text-white">Spin your way to sarcastically losing!</p>
                             <a href="{{ url_for('slots') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <img src="{{ url_for('static', filename='images/game_covers/plinko.jpg') }}" alt="Plinko" class="game-cover-image">
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Plinko</h5>
-                            <p class="card-text">Drop a ball and watch your money disappear!</p>
+                            <h5 class="card-title text-white">Plinko</h5>
+                            <p class="card-text text-white">Drop a ball and watch your money disappear!</p>
                             <a href="{{ url_for('plinko') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
@@ -40,28 +52,44 @@
             </div>
             <div class="row">
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <img src="{{ url_for('static', filename='images/game_covers/blackjack.jpg') }}" alt="Blackjack" class="game-cover-image">
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Blackjack</h5>
-                            <p class="card-text">Try to beat the dealer... good luck with that!</p>
+                            <h5 class="card-title text-white">Blackjack</h5>
+                            <p class="card-text text-white">Try to beat the dealer... good luck with that!</p>
                             <a href="{{ url_for('blackjack') }}" class="btn btn-primary">Play Now</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <div class="coming-soon-cover">
+                                <i class="fas fa-dice fa-3x text-muted"></i>
+                            </div>
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Roulette</h5>
-                            <p class="card-text">Spin the wheel of fortune... or misfortune!</p>
+                            <h5 class="card-title text-white">Roulette</h5>
+                            <p class="card-text text-white">Spin the wheel of fortune... or misfortune!</p>
                             <a href="#" class="btn btn-secondary disabled">Coming Soon</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-dark border-secondary mb-4">
+                    <div class="card bg-dark border-secondary mb-4 game-card">
+                        <div class="game-cover-container">
+                            <div class="coming-soon-cover">
+                                <i class="fas fa-bomb fa-3x text-muted"></i>
+                            </div>
+                            <div class="game-cover-overlay"></div>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Minesweeper</h5>
-                            <p class="card-text">Find the mines... or let them find you!</p>
+                            <h5 class="card-title text-white">Minesweeper</h5>
+                            <p class="card-text text-white">Find the mines... or let them find you!</p>
                             <a href="#" class="btn btn-secondary disabled">Coming Soon</a>
                         </div>
                     </div>
@@ -72,8 +100,8 @@
                 <div class="col-md-6">
                     <div class="card bg-dark border-secondary">
                         <div class="card-body">
-                            <h5 class="card-title">Ready to lose some money?</h5>
-                            <p class="card-text">Join us for the most sarcastic gambling experience ever!</p>
+                            <h5 class="card-title text-white">Ready to lose some money?</h5>
+                            <p class="card-text text-white">Join us for the most sarcastic gambling experience ever!</p>
                             <div class="d-grid gap-2">
                                 <a href="{{ url_for('register') }}" class="btn btn-primary">Register Now</a>
                                 <a href="{{ url_for('login') }}" class="btn btn-outline-light">Login</a>
