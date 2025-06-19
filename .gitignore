@@ -25,16 +25,6 @@ venv/
 env/
 .venv/
 
-# Large asset files
-static/images/slots/
-games/slot_assets/
-games/card_assets/
-static/games/card_assets/
-games/game_assets/
-static/images/game_covers/
-static/res/dunce.png
-static/profile_pics/
-
 # Database files
 *.db
 *.sqlite3
